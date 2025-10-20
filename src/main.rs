@@ -48,18 +48,6 @@ pub fn main() {
     println!("Power Unit: {}mW", power_unit);
     println!("Energy Unit: {}µJ", energy_unit);
     println!("Time Unit: {}s", time_unit);
-
-    // let mut count = 0;
-    // while count < 100 {
-    //     // MSR_PKG_ENERGY_STATUS
-    //     let msr = 0x611;
-    //     let out = r0.readMsr(msr).unwrap();
-    //     let edx = ((out >> 32) & 0xffffffff) as u32;
-    //     let eax = (out & 0xffffffff) as u32;
-    //     let energy = ((edx as u64) << 32) | (eax as u64);
-    //     println!("Energy: {}", energy);
-    //     count += 1;
-    // }  
  
     println!("MSR Value: {}", tj_max);
  
