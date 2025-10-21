@@ -1,3 +1,4 @@
+use sysinfo::System;
 use win_ring0::WinRing0;
 
 pub fn main() {
@@ -44,7 +45,7 @@ pub fn main() {
         Ok(out) => {
             // Split the 64 bit value into the original by offsetting and masking
             // EDX: high order 32 bits
-            let edx = ((out >> 32) & 0xffffffff) as u32;
+            let _edx = ((out >> 32) & 0xffffffff) as u32;
             // EAX: low order 32 bits
             let eax = (out & 0xffffffff) as u32;
             // power_unit = 1/2^PU where PU is bits 3:0 of EAX
@@ -67,9 +68,41 @@ pub fn main() {
         }
     }
 
+    // AMD ENERGY_PWR_UNIT_MSR
+    let msr = 0xC0010299;
+    match r0.readMsr(msr) {
+        Ok(out) => {
+            let _edx = ((out >> 32) & 0xffffffff) as u32;
+            let eax = (out & 0xffffffff) as u32;
+            let energy_unit = 1.0 / f64::from(1 << (eax & 0xf));
+
+            println!("AMD Raw Energy Unit: {:b}", eax & 0xf);
+            println!("AMD Energy Unit: {}µJ", energy_unit);
+        }
+        Err(err) => {
+            println!("Error reading MSR: {}", err);
+        }
+    }
+
+    // AMD ENERGY_CORE_MSR
+    let msr = 0xC001029A;
+    match r0.readMsr(msr) {
+        Ok(out) => {
+            let edx = ((out >> 32) & 0xffffffff) as u32;
+            let eax = (out & 0xffffffff) as u32;
+            let energy = ((edx as u64) << 32) | (eax as u64);
+            println!("AMD Core Energy: {}", energy);
+        }
+        Err(err) => {
+            println!("Error reading MSR: {}", err);
+        }
+    }
+    uninstall_driver(r0);
+
     // let mut count = 0;
     // while count < 100 {
-    //     // MSR_PKG_ENERGY_STATUS
+    //     /
+    // MSR_PKG_ENERGY_STATUS
     //     let msr = 0x611;
     //     let out = r0.readMsr(msr).unwrap();
     //     let edx = ((out >> 32) & 0xffffffff) as u32;
@@ -78,7 +111,9 @@ pub fn main() {
     //     println!("Energy: {}", energy);
     //     count += 1;
     // }
+}
 
+fn uninstall_driver(mut r0: Box<WinRing0>) {
     println!("Closing ring0 driver");
     match r0.close() {
         Ok(()) => {
