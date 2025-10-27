@@ -1,51 +1,50 @@
-// 
-
-use is_admin;
 use std::{thread, time::Duration, time::Instant};
+use sysinfo::System;
+use win_ring0::WinRing0;
 
-mod sensors;
 mod core;
+mod sensors;
 
 pub fn main() {
     // Check if we have the required privileges
     check_permissions();
 
-    // let mut r0: Box<WinRing0> = Box::from(WinRing0::new());
+    let mut r0: Box<WinRing0> = Box::from(WinRing0::new());
 
-    // println!("Installing ring0 driver");
-    // match r0.install() {
-    //     Ok(()) => {
-    //         println!("Driver installed");
-    //     }
-    //     Err(err) => {
-    //         println!("Error: {}", err);
-    //     }
-    // }
+    println!("Installing ring0 driver");
+    match r0.install() {
+        Ok(()) => {
+            println!("Driver installed");
+        }
+        Err(err) => {
+            println!("Error: {}", err);
+        }
+    }
 
-    // println!("Opening ring0 driver");
-    // match r0.open() {
-    //     Ok(()) => {
-    //         println!("Driver opened");
-    //     }
-    //     Err(err) => {
-    //         println!("Error: {}", err);
-    //     }
-    // }
+    println!("Opening ring0 driver");
+    match r0.open() {
+        Ok(()) => {
+            println!("Driver opened");
+        }
+        Err(err) => {
+            println!("Error: {}", err);
+        }
+    }
 
-    // println!("Trying to get tjMax value, should work on most Intel CPUs");
-    // // MSR_TEMPERATURE_TARGET
-    // let msr = 0x1a2;
-    // match r0.readMsr(msr) {
-    //     Ok(out) => {
-    //         let _edx = ((out >> 32) & 0xffffffff) as u32;
-    //         let eax = (out & 0xffffffff) as u32;
-    //         let tj_max = (eax >> 16) & 0xff;
-    //         println!("MSR Value: {}", tj_max);
-    //     }
-    //     Err(err) => {
-    //         println!("Error reading MSR: {}", err);
-    //     }
-    // }
+    println!("Trying to get tjMax value, should work on most Intel CPUs");
+    // MSR_TEMPERATURE_TARGET
+    let msr = 0x1a2;
+    match r0.readMsr(msr) {
+        Ok(out) => {
+            let _edx = ((out >> 32) & 0xffffffff) as u32;
+            let eax = (out & 0xffffffff) as u32;
+            let tj_max = (eax >> 16) & 0xff;
+            println!("MSR Value: {}", tj_max);
+        }
+        Err(err) => {
+            println!("Error reading MSR: {}", err);
+        }
+    }
 
     let mut energy_unit: f64 = 0.0;
     // MSR_RAPL_POWER_UNIT
@@ -64,9 +63,9 @@ pub fn main() {
             // time_unit = 1/2^TU where TU is bits 19:16 of EAX
             let time_unit = 1.0 / f64::from(1 << ((eax >> 16) & 0xf));
 
-    //         println!("Raw Power Unit: {:b}", eax & 0xf);
-    //         println!("Raw Energy Unit: {:b}", (eax >> 8) & 0x1f);
-    //         println!("Raw Time Unit: {:b}", (eax >> 16) & 0xf);
+            println!("Raw Power Unit: {:b}", eax & 0xf);
+            println!("Raw Energy Unit: {:b}", (eax >> 8) & 0x1f);
+            println!("Raw Time Unit: {:b}", (eax >> 16) & 0xf);
 
             println!("Power Unit: {}mW", power_unit);
             println!("Energy Unit: {}Wh", energy_unit);
@@ -77,21 +76,21 @@ pub fn main() {
         }
     }
 
-    // // AMD ENERGY_PWR_UNIT_MSR
-    // let msr = 0xC0010299;
-    // match r0.readMsr(msr) {
-    //     Ok(out) => {
-    //         let _edx = ((out >> 32) & 0xffffffff) as u32;
-    //         let eax = (out & 0xffffffff) as u32;
-    //         let energy_unit = 1.0 / f64::from(1 << (eax & 0xf));
+    // AMD ENERGY_PWR_UNIT_MSR
+    let msr = 0xC0010299;
+    match r0.readMsr(msr) {
+        Ok(out) => {
+            let _edx = ((out >> 32) & 0xffffffff) as u32;
+            let eax = (out & 0xffffffff) as u32;
+            let energy_unit = 1.0 / f64::from(1 << (eax & 0xf));
 
-    //         println!("AMD Raw Energy Unit: {:b}", eax & 0xf);
-    //         println!("AMD Energy Unit: {}µJ", energy_unit);
-    //     }
-    //     Err(err) => {
-    //         println!("Error reading MSR: {}", err);
-    //     }
-    // }
+            println!("AMD Raw Energy Unit: {:b}", eax & 0xf);
+            println!("AMD Energy Unit: {}µJ", energy_unit);
+        }
+        Err(err) => {
+            println!("Error reading MSR: {}", err);
+        }
+    }
 
     // AMD ENERGY_CORE_MSR
     let msr = 0xC001029A;
@@ -153,34 +152,34 @@ pub fn main() {
 
     // Mesure de la puissance sur une période
     println!("\n=== Mesure de la puissance ===");
-    
+
     // Première lecture des énergies
     let start_time = Instant::now();
-    
+
     let pkg_energy_start = r0.readMsr(0x611).ok();
     let dram_energy_start = r0.readMsr(0x619).ok();
     let pp0_energy_start = r0.readMsr(0x639).ok();
     let pp1_energy_start = r0.readMsr(0x641).ok();
-    
+
     // Attendre une seconde
     println!("Mesure en cours (1 seconde)...");
     thread::sleep(Duration::from_secs(1));
-    
+
     // Deuxième lecture des énergies
     let elapsed = start_time.elapsed();
     let elapsed_ms = elapsed.as_millis() as f64;
     let elapsed_s = elapsed.as_secs_f64();
-    
+
     let pkg_energy_end = r0.readMsr(0x611).ok();
     let dram_energy_end = r0.readMsr(0x619).ok();
     let pp0_energy_end = r0.readMsr(0x639).ok();
     let pp1_energy_end = r0.readMsr(0x641).ok();
-    
+
     // Calcul et affichage des puissances
     println!("\nHeure (Temps écoulé): {:.3} ms", elapsed_ms);
     println!("Temps écoulé: {:.3} s", elapsed_s);
     println!();
-    
+
     if let (Some(start), Some(end)) = (dram_energy_start, dram_energy_end) {
         let energy_diff = (end.wrapping_sub(start)) as f64 * energy_unit; // en Wh
         let power_w = energy_diff / elapsed_s * 3600.0; // convertir Wh en W
@@ -189,7 +188,7 @@ pub fn main() {
         println!("  Alimentation: {:.3} mW", power_mw);
         println!("  Énergie consommée: {:.6} Wh", energy_diff);
     }
-    
+
     if let (Some(start), Some(end)) = (pkg_energy_start, pkg_energy_end) {
         let energy_diff = (end.wrapping_sub(start)) as f64 * energy_unit; // en Wh
         let power_w = energy_diff / elapsed_s * 3600.0; // convertir Wh en W
@@ -198,7 +197,7 @@ pub fn main() {
         println!("  Alimentation: {:.3} mW", power_mw);
         println!("  Énergie consommée: {:.6} Wh", energy_diff);
     }
-    
+
     if let (Some(start), Some(end)) = (pp0_energy_start, pp0_energy_end) {
         let energy_diff = (end.wrapping_sub(start)) as f64 * energy_unit; // en Wh
         let power_w = energy_diff / elapsed_s * 3600.0; // convertir Wh en W
@@ -207,7 +206,7 @@ pub fn main() {
         println!("  Alimentation: {:.3} mW", power_mw);
         println!("  Énergie consommée: {:.6} Wh", energy_diff);
     }
-    
+
     if let (Some(start), Some(end)) = (pp1_energy_start, pp1_energy_end) {
         let energy_diff = (end.wrapping_sub(start)) as f64 * energy_unit; // en Wh
         let power_w = energy_diff / elapsed_s * 3600.0; // convertir Wh en W
