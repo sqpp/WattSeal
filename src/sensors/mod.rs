@@ -1,7 +1,7 @@
-mod cpu;
-mod rapl;
+pub mod cpu;
 
 pub trait Sensor {
+    fn new<T>(param: T) -> Self;
     fn name(&self) -> &'static str;
     fn read_power_watts(&self) -> Result<f64, SensorError>;
     fn read_usage_percent(&self) -> Result<f64, SensorError>;
@@ -9,6 +9,6 @@ pub trait Sensor {
 
 #[derive(Debug)]
 pub enum SensorError {
+    NotSupported,
     ReadError(String),
-    Unsupported(String),
 }

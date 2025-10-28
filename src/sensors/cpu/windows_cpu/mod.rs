@@ -1,42 +1,65 @@
 use win_ring0::WinRing0;
-use super::Sensor;
+use super::{Sensor, SensorError};
+use super::CPUVendor;
+use driver::WinRing0Handler;
+
+mod driver;
 
 enum MeasurementSource {
-    MSR(Box<WinRing0>),
+    MSR(WinRing0Handler),
+    Estimation
 }
 
-struct WindowsCPUSensor {
+pub struct WindowsCPUSensor {
     measurement_source: MeasurementSource,
     energy_unit: f64,
+    vendor: CPUVendor,
 }
 
 impl Sensor for WindowsCPUSensor {
+    fn new<String>(vendor_id: String) -> Self {
+        let measurement_source: MeasurementSource;
+        let energy_unit: f64;
+        let ring0_handler = WinRing0Handler::new().unwrap();
+        let energy_unit = match CPUVendor::Intel {
+            CPUVendor::Intel => IntelMSR::read_energy_unit(&ring0_handler.ring0).unwrap_or(0.0),
+            CPUVendor::Amd => AMDMSR::read_energy_unit(&ring0_handler.ring0).unwrap_or(0.0),
+            CPUVendor::Other => 0.0,
+        };
+        WindowsCPUSensor {
+            measurement_source: MeasurementSource::MSR(ring0_handler),
+            energy_unit,
+            vendor: CPUVendor::Other,
+        }
+    }
+
     fn name(&self) -> &'static str {
         "Windows CPU"
     }
 
-    fn read_power_watts(&self) -> Result<f64, super::SensorError> {
+    fn read_power_watts(&self) -> Result<f64, SensorError> {
         match &self.measurement_source {
-            MeasurementSource::MSR(ring0) => {
-                let energy_value = match self.get_cpu_vendor()? {
-                    CPUVendor::Intel => IntelMSR::read_energy_value(ring0)?,
-                    CPUVendor::Amd => AMDMSR::read_energy_value(ring0)?,
-                    CPUVendor::Other => return Err(super::SensorError::UnsupportedVendor),
+            MeasurementSource::MSR(ring0_handler) => {
+                let energy_value = match self.vendor {
+                    CPUVendor::Intel => IntelMSR::read_energy_value(&ring0_handler.ring0)
+                        .map_err(|e| SensorError::ReadError(e))?,
+                    CPUVendor::Amd => AMDMSR::read_energy_value(&ring0_handler.ring0)
+                        .map_err(|e| SensorError::ReadError(e))?,
+                    CPUVendor::Other => return Err(SensorError::NotSupported),
                 };
-                let power_watts = (energy_value as f64) * self.energy_unit;
-                Ok(power_watts)
+                let power = (energy_value as f64) * self.energy_unit;
+                Ok(power)
+            },
+            MeasurementSource::Estimation => {
+                Err(SensorError::NotSupported)
             }
         }
     }
 
-    fn read_usage_percent(&self) -> Result<f64, super::SensorError> {
+    fn read_usage_percent(&self) -> Result<f64, SensorError> {
         // Placeholder implementation
         Ok(0.0)
     }
-}
-
-fn get_measurement_source(ring0: Box<WinRing0>) -> Result<MeasurementSource, String> {
-    Ok(MeasurementSource::MSR(ring0))
 }
 
 trait MSR {
