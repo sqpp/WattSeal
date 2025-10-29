@@ -17,3 +17,11 @@
         - RAM (procfs)
 
 Configuration
+
+## Arrêt du driver Windows
+
+Si le driver ne s'arrête pas correctement, exécuter
+
+```cmd
+sc stop WinRing0_1_2_0
+```
