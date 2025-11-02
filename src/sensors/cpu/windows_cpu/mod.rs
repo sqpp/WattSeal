@@ -1,6 +1,6 @@
 use super::{Sensor, SensorError};
 use super::CPUVendor;
-use crate::core::types::{Event};
+use crate::core::types::{Event, CPUData};
 use driver::WinRing0Reader;
 use std::cell::RefCell;
 use std::time::Instant;
@@ -32,7 +32,7 @@ pub struct WindowsCPUSensor {
     last_energy_measurement: RefCell<EnergyMeasurement>,
 }
 
-impl Sensor for WindowsCPUSensor {
+impl Sensor<CPUData> for WindowsCPUSensor {
     fn new(vendor_id: &str) -> Self {
         let vendor = CPUVendor::from_str(vendor_id);
         let measurement_source = WinRing0Reader::new()
@@ -54,21 +54,45 @@ impl Sensor for WindowsCPUSensor {
         "Windows CPU"
     }
 
+    fn read_full_data(&self) -> Result<Event<CPUData>, SensorError> {
+        let power = self.read_raw_power()?;
+        let usage = self.read_raw_usage()?;
+        let data = CPUData {
+            total_power_watts: power,
+            pp0_power_watts: None,
+            pp1_power_watts: None,
+            dram_power_watts: None,
+            usage_percent: usage,
+        };
+        Ok(Event::new(data))
+    }
+
     fn read_power_watts(&self) -> Result<Event<f64>, SensorError> {
+        Ok(Event::new(self.read_raw_power()?))
+    }
+
+    fn read_usage_percent(&self) -> Result<Event<f64>, SensorError> {
+        // TODO: fetch CPU usage
+        Ok(Event::new(self.read_raw_usage()?))
+    }
+}
+
+impl WindowsCPUSensor {
+    fn read_raw_power(&self) -> Result<f64, SensorError> {
         match &self.measurement_source {
             MeasurementSource::MSR(msr_reader) => {
                 let current_energy = msr_reader.read_energy()?;
                 let power = msr_reader.calculate_power(&current_energy, &self.last_energy_measurement.borrow())?;
                 *self.last_energy_measurement.borrow_mut() = current_energy;
-                Ok(Event::new(power))
+                Ok(power)
             }
             _ => Err(SensorError::NotSupported),
         }
     }
 
-    fn read_usage_percent(&self) -> Result<Event<f64>, SensorError> {
+    fn read_raw_usage(&self) -> Result<f64, SensorError> {
         // TODO: fetch CPU usage
-        Ok(Event::new(0.0))
+        Ok(0.0)
     }
 }
 
@@ -139,7 +163,7 @@ trait MSR {
     fn read_energy_value(ring0_reader: &WinRing0Reader) -> Result<u64, String>;
 }
 
-#[allow(non_camel_case_types, dead_code)]
+#[allow(non_camel_case_types)]
 enum IntelMSR {
     MSR_RAPL_POWER_UNIT = 0x606,
     MSR_PKG_ENERGY_STATUS = 0x611,

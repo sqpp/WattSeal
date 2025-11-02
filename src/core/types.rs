@@ -21,12 +21,12 @@ use std::{fmt::Display, time::SystemTime};
 #[derive(Debug, Clone)]
 pub struct Event<T> {
     time: SystemTime,
-    value: T,
+    data: T,
 }
 
 impl Display for Event<f64> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} at {:?}", self.value, self.time)
+        write!(f, "{} at {:?}", self.data, self.time)
     }
 }
 
@@ -34,7 +34,7 @@ impl<T> Event<T> {
     pub fn new(value: T) -> Self {
         Event {
             time: SystemTime::now(),
-            value,
+            data: value,
         }
     }
 
@@ -42,9 +42,18 @@ impl<T> Event<T> {
         self.time
     }
 
-    pub fn value(&self) -> &T {
-        &self.value
+    pub fn data(&self) -> &T {
+        &self.data
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct CPUData {
+    pub total_power_watts: f64,
+    pub pp0_power_watts: Option<f64>,
+    pub pp1_power_watts: Option<f64>,
+    pub dram_power_watts: Option<f64>,
+    pub usage_percent: f64,
 }
 
 pub enum OS {

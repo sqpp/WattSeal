@@ -1,10 +1,11 @@
 use super::{Sensor, SensorError};
 use windows_cpu::WindowsCPUSensor;
+use crate::core::types::{Event, CPUData};
 
 #[cfg(target_os = "windows")]
 mod windows_cpu;
 
-pub fn get_cpu_power_sensor() -> Result<WindowsCPUSensor, SensorError> {
+pub fn get_cpu_power_sensor() -> Result<impl Sensor<CPUData>, SensorError> {
     Ok(WindowsCPUSensor::new("Intel"))
 }
 
