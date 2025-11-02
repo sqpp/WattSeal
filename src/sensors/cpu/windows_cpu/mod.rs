@@ -59,7 +59,7 @@ impl Sensor for WindowsCPUSensor {
             MeasurementSource::MSR(msr_reader) => {
                 let current_energy = msr_reader.read_energy()?;
                 let power = msr_reader.calculate_power(&current_energy, &self.last_energy_measurement.borrow())?;
-                *self.last_energy_measurement.borrow_mut() = current_energy.clone();
+                *self.last_energy_measurement.borrow_mut() = current_energy;
                 Ok(Event::new(power))
             }
             _ => Err(SensorError::NotSupported),
