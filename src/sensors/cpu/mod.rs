@@ -1,12 +1,12 @@
 use super::{Sensor, SensorError};
+use crate::core::types::{CPUData, Event};
 use windows_cpu::WindowsCPUSensor;
-use crate::core::types::{Event, CPUData};
 
 #[cfg(target_os = "windows")]
 mod windows_cpu;
 
 pub fn get_cpu_power_sensor() -> Result<impl Sensor<CPUData>, SensorError> {
-    Ok(WindowsCPUSensor::new("Intel"))
+    Ok(WindowsCPUSensor::new("Amd"))
 }
 
 enum CPUVendor {

@@ -1,20 +1,33 @@
-use std::{thread, time::Duration};
+#![allow(dead_code, unused_imports)]
+
+use std::time::{self, Instant};
+
+use database::Database;
 use sensors::Sensor;
-use std::time::{UNIX_EPOCH};
+use std::time::UNIX_EPOCH;
+use std::{thread, time::Duration};
 
 mod core;
+mod database;
 mod sensors;
 
 pub fn main() {
     check_permissions();
+    let database = Database::new("test.db").unwrap();
+    database.create_tables_if_not_exists().unwrap();
     let sensor = sensors::cpu::get_cpu_power_sensor().unwrap();
-    for _ in 0..5 {
-        println!("Using sensor: {}", sensor.name());
-        let power = sensor.read_power_watts().unwrap();
-        println!("CPU Power: {:.3} W at time {:?}", power.value(), power.time().duration_since(UNIX_EPOCH).unwrap());
-        let usage = sensor.read_usage_percent().unwrap();
-        println!("CPU Usage: {:.2} % at time {:?}", usage.value(), usage.time().duration_since(UNIX_EPOCH).unwrap());
-        thread::sleep(Duration::from_secs(1));
+    loop {
+        match sensor.read_full_data() {
+            Ok(event) => {
+                database.insert_cpu_data(&event).unwrap();
+                println!("{}", event.data().total_power_watts);
+            }
+            Err(e) => {
+                eprintln!("Error reading CPU sensor data: {:?}", e);
+            }
+        };
+
+        thread::sleep(Duration::from_millis(1000));
     }
 }
 

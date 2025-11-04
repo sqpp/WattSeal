@@ -6,8 +6,6 @@ pub trait Sensor<T> {
     fn new(param: &str) -> Self;
     fn name(&self) -> &'static str;
     fn read_full_data(&self) -> Result<Event<T>, SensorError>;
-    fn read_power_watts(&self) -> Result<Event<f64>, SensorError>;
-    fn read_usage_percent(&self) -> Result<Event<f64>, SensorError>;
 }
 
 #[derive(Debug)]
