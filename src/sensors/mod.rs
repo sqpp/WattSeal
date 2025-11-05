@@ -1,6 +1,7 @@
 use crate::core::types::{Event};
 
 pub mod cpu;
+pub mod gpu;
 
 pub trait Sensor<T> {
     fn new(param: &str) -> Self;

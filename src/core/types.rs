@@ -56,6 +56,13 @@ pub struct CPUData {
     pub usage_percent: f64,
 }
 
+#[derive(Debug, Clone)]
+pub struct GPUData {
+    pub total_power_watts: f64,
+    pub usage_percent: f64,
+    pub memory_usage_percent: f64,
+}
+
 pub enum OS {
     Windows,
     Linux,
