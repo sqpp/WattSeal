@@ -6,7 +6,18 @@ use windows_cpu::WindowsCPUSensor;
 mod windows_cpu;
 
 pub fn get_cpu_power_sensor() -> Result<impl Sensor<CPUData>, SensorError> {
-    Ok(WindowsCPUSensor::new("Amd"))
+    let s = sysinfo::System::new_all();
+    let cpu = s.cpus().first();
+    let vendor_id = match cpu {
+        None => return Err(SensorError::NotSupported),
+        Some(cpu_info) => cpu_info.vendor_id(),
+    };
+
+    #[cfg(target_os = "windows")]
+    return Ok(WindowsCPUSensor::new(vendor_id));
+
+    #[cfg(not(target_os = "windows"))]
+    return Err(SensorError::NotSupported);
 }
 
 enum CPUVendor {
