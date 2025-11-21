@@ -15,7 +15,33 @@ mod core;
 mod database;
 mod sensors;
 
-pub fn main() {
+use adlx::{gpu::Gpu1, helper::AdlxHelper, interface::Interface};
+
+fn main() {
+    let helper = AdlxHelper::new().unwrap();
+    let system = helper.system();
+    let perfo = system.performance_monitoring_services().unwrap();
+
+    let gpu_list = system.gpus().unwrap();
+
+    for gpu in 0..gpu_list.size() {
+        let gpu = gpu_list.at(gpu).unwrap();
+        println!("GPU Name: {}", gpu.name().unwrap());
+
+        let gpumetrics = perfo.current_gpu_metrics(&gpu).unwrap();
+        // let power = gpumetrics.power().unwrap();
+        let usage = gpumetrics.usage().unwrap();
+        // let vram: i32 = gpumetrics.vram().unwrap();
+
+        // println!("Power (mW): {}", power);
+        println!("Usage (%): {}", usage);   
+        // println!("VRAM Usage (MB): {}", vram);
+        // let gpu1 = gpu.cast::<Gpu1>().unwrap();
+        // dbg!(gpu1.name()).unwrap();
+        // dbg!(gpu1.product_name()).unwrap();
+    }
+}
+// pub fn main() {
     // let conn = Connection::open("test.db").unwrap();
     // conn.execute(
     //     "CREATE TABLE IF NOT EXISTS cpu_data (
@@ -42,39 +68,39 @@ pub fn main() {
     //     thread::sleep(Duration::from_secs(1));
     // }
 
-    let database = Database::new("test.db").unwrap();
-    database.create_tables_if_not_exists().unwrap();
-    let sensor = sensors::cpu::get_cpu_power_sensor().unwrap();
-    let gpu_sensor = sensors::gpu::get_gpu_power_sensor().unwrap();
+    // let database = Database::new("test.db").unwrap();
+    // database.create_tables_if_not_exists().unwrap();
+    // let sensor = sensors::cpu::get_cpu_power_sensor().unwrap();
+    // let gpu_sensor = sensors::gpu::get_gpu_power_sensor().unwrap();
 
-    let icon = Icon::from_rgba(vec![0, 0, 0, 0], 1, 1).expect("Failed to create icon");
-    let menu = Menu::new();
-    let item1 = MenuItem::new("item1", true, None);
-    menu.append(&item1).unwrap();
+    // let icon = Icon::from_rgba(vec![0, 0, 0, 0], 1, 1).expect("Failed to create icon");
+    // let menu = Menu::new();
+    // let item1 = MenuItem::new("item1", true, None);
+    // menu.append(&item1).unwrap();
 
-    let tray_icon = TrayIconBuilder::new()
-        .with_tooltip("PC Power Collector")
-        .with_icon(icon)
-        .with_menu(Box::new(menu))
-        .build()
-        .expect("Failed to create tray icon");
+    // let tray_icon = TrayIconBuilder::new()
+    //     .with_tooltip("PC Power Collector")
+    //     .with_icon(icon)
+    //     .with_menu(Box::new(menu))
+    //     .build()
+    //     .expect("Failed to create tray icon");
 
-    loop {
-        let event = match sensor.read_full_data() {
-            Ok(event) => event,
-            Err(e) => {
-                eprintln!("Error reading CPU data: {:?}", e);
-                continue;
-            }
-        };
-        database.insert_cpu_data(&event).unwrap();
-        println!("Read CPU data: power {:.3} W, usage {:.2} %", event.data().total_power_watts, event.data().usage_percent);
-        tray_icon.set_tooltip(Some(format!("CPU Power: {:.3} W, Usage: {:.2} %", event.data().total_power_watts, event.data().usage_percent))).unwrap();
+    // loop {
+    //     let event = match sensor.read_full_data() {
+    //         Ok(event) => event,
+    //         Err(e) => {
+    //             eprintln!("Error reading CPU data: {:?}", e);
+    //             continue;
+    //         }
+    //     };
+    //     database.insert_cpu_data(&event).unwrap();
+    //     println!("Read CPU data: power {:.3} W, usage {:.2} %", event.data().total_power_watts, event.data().usage_percent);
+    //     tray_icon.set_tooltip(Some(format!("CPU Power: {:.3} W, Usage: {:.2} %", event.data().total_power_watts, event.data().usage_percent))).unwrap();
 
-        let gpu_event = gpu_sensor.read_full_data().unwrap();
-        println!("GPU power {:.3} W, CPU power {:.3} W, 2 RAMS : 10 W, total {:.3} W", gpu_event.data().total_power_watts, event.data().total_power_watts, gpu_event.data().total_power_watts + event.data().total_power_watts + 10.0);
-        thread::sleep(Duration::from_millis(1000));
-    }
+    //     let gpu_event = gpu_sensor.read_full_data().unwrap();
+    //     println!("GPU power {:.3} W, CPU power {:.3} W, 2 RAMS : 10 W, total {:.3} W", gpu_event.data().total_power_watts, event.data().total_power_watts, gpu_event.data().total_power_watts + event.data().total_power_watts + 10.0);
+    //     thread::sleep(Duration::from_millis(1000));
+    // }
     // let (tx, rx) = mpsc::channel();
     // let tx2 = tx.clone();
     // thread::spawn(move || {
