@@ -1,18 +1,13 @@
-use iced::{Color, Length};
-use iced::time::{Duration};
-use iced::widget::{Text};
-use iced::{Element, Theme, Task};
-use iced::alignment::Alignment;
-use chrono::{Utc};
-use iced::widget::Column;
+use chrono::Utc;
 use iced::{
+    Color, Element, Font, Length, Task, Theme,
+    alignment::Alignment,
     font,
-    Font,
+    time::Duration,
+    widget::{Column, Text, stack},
 };
-use iced::widget::stack;
-use crate::message::Message;
-use crate::pages::Page;
-use crate::components::chart::SensorChart;
+
+use crate::{components::chart::SensorChart, message::Message, pages::Page};
 
 const TITLE_FONT_SIZE: u16 = 22;
 const SAMPLE_EVERY: Duration = Duration::from_millis(1000);
@@ -56,16 +51,10 @@ impl App {
             .align_x(Alignment::Start)
             .width(Length::Fill)
             .height(Length::Fill)
-            .push(
-                Text::new("Iced test chart")
-                    .size(TITLE_FONT_SIZE)
-                    .font(FONT_BOLD),
-            )
+            .push(Text::new("Iced test chart").size(TITLE_FONT_SIZE).font(FONT_BOLD))
             .push(self.chart.view(300.0));
 
-        let view: Element<'_, Message, Theme> = stack![
-            content,
-        ].into();
+        let view: Element<'_, Message, Theme> = stack![content,].into();
         view.explain(Color::BLACK)
     }
 }

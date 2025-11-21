@@ -1,8 +1,8 @@
 use iced::{font::Font, time::Duration};
 
 pub mod app;
-pub mod message;
 pub mod components;
+pub mod message;
 pub mod pages;
 
 use app::App;

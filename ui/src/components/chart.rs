@@ -1,19 +1,19 @@
-use iced::{Length};
-use iced::time::{Duration};
-use iced::widget::{Text};
-use iced::{Element};
-use iced::alignment::Alignment;
 use std::collections::VecDeque;
+
 use chrono::{DateTime, Utc};
-use iced::widget::Column;
 use iced::{
+    Element, Length, Size,
+    alignment::Alignment,
+    time::Duration,
     widget::{
+        Column, Text,
         canvas::{Cache, Frame, Geometry},
-    }, Size,
+    },
 };
-use plotters::{prelude::ChartBuilder, coord::Shift};
+use plotters::{coord::Shift, prelude::ChartBuilder};
 use plotters_backend::DrawingBackend;
-use plotters_iced::{Renderer, plotters_backend, Chart, ChartWidget, DrawingArea};
+use plotters_iced::{Chart, ChartWidget, DrawingArea, Renderer, plotters_backend};
+
 use crate::message::Message;
 
 const PLOT_SECONDS: usize = 60;
@@ -90,7 +90,7 @@ impl Chart<Message> for SensorChart {
         renderer.draw_cache(&self.cache, bounds, draw_fn)
     }
 
-    fn build_chart<DB: DrawingBackend>(&self, _state: &Self::State, mut chart: ChartBuilder<DB>) {
+    fn build_chart<DB: DrawingBackend>(&self, _state: &Self::State, chart: ChartBuilder<DB>) {
         build_chart_2d(chart, &self.data, &self.data2);
 
         // build_chart_3d(chart);
@@ -139,7 +139,11 @@ impl Chart<Message> for SensorChart {
 //         .unwrap();
 // }
 
-fn build_chart_2d<DB: DrawingBackend>(mut chart: ChartBuilder<DB>, data: &VecDeque<(DateTime<Utc>, f32)>, data2: &VecDeque<(DateTime<Utc>, f32)>) {
+fn build_chart_2d<DB: DrawingBackend>(
+    mut chart: ChartBuilder<DB>,
+    data: &VecDeque<(DateTime<Utc>, f32)>,
+    data2: &VecDeque<(DateTime<Utc>, f32)>,
+) {
     use plotters::prelude::*;
     const PLOT_LINE_COLOR: RGBColor = RGBColor(0, 175, 255);
 
@@ -173,12 +177,7 @@ fn build_chart_2d<DB: DrawingBackend>(mut chart: ChartBuilder<DB>, data: &VecDeq
         .expect("failed to draw chart mesh");
 
     chart
-        .draw_series(
-            LineSeries::new(
-                data.iter().map(|x| (x.0, x.1)),
-                PLOT_LINE_COLOR,
-            )
-        )
+        .draw_series(LineSeries::new(data.iter().map(|x| (x.0, x.1)), PLOT_LINE_COLOR))
         .expect("failed to draw chart data");
 
     chart
@@ -200,11 +199,20 @@ fn build_chart_3d<DB: DrawingBackend>(mut chart: ChartBuilder<DB>) {
         .build_cartesian_3d(-3.0..3.0f64, -3.0..3.0f64, -3.0..3.0f64)
         .unwrap();
     chart.configure_axes().draw().unwrap();
-    chart.draw_series([("x", (3., -3., -3.)), ("y", (-3., 3., -3.)), ("z", (-3., -3., 3.))]
-    .map(|(label, position)| Text::new(label, position, TextStyle::from(("sans-serif", 20).into_font())))).unwrap();
-    chart.draw_series(SurfaceSeries::xoz(
-        (-30..30).map(|v| v as f64 / 10.0),
-        (-30..30).map(|v| v as f64 / 10.0),
-        |x:f64,z:f64|(0.7 * (x * x + z * z)).cos()).style(&BLUE.mix(0.5))
-    ).unwrap();
+    chart
+        .draw_series(
+            [("x", (3., -3., -3.)), ("y", (-3., 3., -3.)), ("z", (-3., -3., 3.))]
+                .map(|(label, position)| Text::new(label, position, TextStyle::from(("sans-serif", 20).into_font()))),
+        )
+        .unwrap();
+    chart
+        .draw_series(
+            SurfaceSeries::xoz(
+                (-30..30).map(|v| v as f64 / 10.0),
+                (-30..30).map(|v| v as f64 / 10.0),
+                |x: f64, z: f64| (0.7 * (x * x + z * z)).cos(),
+            )
+            .style(&BLUE.mix(0.5)),
+        )
+        .unwrap();
 }
