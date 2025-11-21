@@ -25,6 +25,47 @@ impl GPUVendor {
     }
 }
 
+// mod amd_gpu {
+//     use adlx::gpu_metrics::GpuMetrics;
+//     use super::{Sensor, SensorError};
+//     use crate::core::types::{Event, GPUData};
+
+//     pub struct AmdGPUSensor {
+        
+//     }
+
+//     impl AmdGPUSensor {
+//         pub fn new() -> Result<Self, SensorError> {
+//             // Initialize AMD GPU sensor here
+//             let _metrics = GpuMetrics::new().map_err(|e| SensorError::ReadError(e.to_string()))?;
+//         }
+//     }
+
+//     impl Sensor<GPUData> for AmdGPUSensor {
+//         fn new(_param: &str) -> Self {
+//             AmdGPUSensor::new().unwrap()
+//         }
+
+//         fn name(&self) -> &'static str {
+//             "AMD GPU"
+//         }
+
+//         fn read_full_data(&self) -> Result<Event<GPUData>, SensorError> {
+//             // Read AMD GPU data here
+//             let power_mw = GpuMetrics::power.map_err(|e| SensorError::ReadError(e.to_string()))?;
+//             let usage = GpuMetrics::vram.map_err(|e| SensorError::ReadError(e.to_string()))?;
+//             let memory = GpuMetrics::usage.map_err(|e| SensorError::ReadError(e.to_string()))?;
+//             let data = GPUData {
+//                 total_power_watts: power_mw as f64 / 1000.0,
+//                 usage_percent: usage as f64,
+//                 memory_usage_percent: memory as f64,
+//             };
+
+//             Ok(Event::new(data))
+//         }
+//     }
+// }
+
 mod nvidia_gpu {
     use nvml_wrapper::Nvml;
     use super::{Sensor, SensorError};
