@@ -1,60 +1,64 @@
 use chrono::Utc;
-use iced::{
-    Color, Element, Font, Length, Task, Theme,
-    alignment::Alignment,
-    font,
-    time::Duration,
-    widget::{Column, Text, stack},
-};
+use iced::{Color, Element, Font, Length, Task, Theme, alignment::Alignment, font, time::Duration, widget::Column};
 
-use crate::{components::chart::SensorChart, message::Message, pages::Page};
-
-const TITLE_FONT_SIZE: u16 = 22;
-const SAMPLE_EVERY: Duration = Duration::from_millis(1000);
-const FONT_BOLD: Font = Font {
-    family: font::Family::Name("Noto Sans"),
-    weight: font::Weight::Bold,
-    ..Font::DEFAULT
+use crate::{
+    components::header::Header,
+    message::Message,
+    pages::{Page, chart::ChartPage, info::InfoPage, optimization::OptimizationPage, settings::SettingsPage},
 };
 
 pub struct App {
-    chart: SensorChart,
+    current_page: Page,
+    chart_page: ChartPage,
+    info_page: InfoPage,
+    optimization_page: OptimizationPage,
+    settings_page: SettingsPage,
+    header: Header,
 }
 
 impl App {
     pub fn new() -> (Self, Task<Message>) {
+        let (chart_page, task) = ChartPage::new();
+        let current_page = Page::Chart;
         (
             Self {
-                chart: SensorChart::new(std::iter::empty()),
+                current_page,
+                chart_page,
+                header: Header::new(
+                    &current_page.to_string(),
+                    vec![Page::Chart, Page::Info, Page::Optimization, Page::Settings],
+                ),
+                info_page: InfoPage::new(),
+                optimization_page: OptimizationPage::new(),
+                settings_page: SettingsPage::new(),
             },
-            Task::done(Message::Tick),
+            task,
         )
     }
 
     pub fn update(&mut self, message: Message) {
         match message {
             Message::Tick => {
-                let now = Utc::now();
-                let percent = rand::random::<f32>() * 100.0;
-                let percent2 = rand::random::<f32>() * 100.0;
-                self.chart.push_data(now, percent, percent2);
+                self.chart_page.update(Message::Tick);
             }
-            _ => {
-                todo!("Add full message match");
+            Message::NavigateTo(page) => {
+                self.current_page = page;
+                self.header.set_title(&page.to_string());
             }
         }
     }
 
     pub fn view(&self) -> Element<'_, Message> {
-        let content = Column::new()
-            .spacing(20)
-            .align_x(Alignment::Start)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .push(Text::new("Iced test chart").size(TITLE_FONT_SIZE).font(FONT_BOLD))
-            .push(self.chart.view(300.0));
+        let view: Element<'_, Message, Theme> = Column::new()
+            .push(self.header.view())
+            .push(match self.current_page {
+                Page::Chart => self.chart_page.view(),
+                Page::Info => self.info_page.view(),
+                Page::Optimization => self.optimization_page.view(),
+                Page::Settings => self.settings_page.view(),
+            })
+            .into();
 
-        let view: Element<'_, Message, Theme> = stack![content,].into();
         view.explain(Color::BLACK)
     }
 }

@@ -1,6 +1,6 @@
 use crate::pages::Page;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Message {
     Tick,
     NavigateTo(Page),
