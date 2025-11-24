@@ -6,6 +6,7 @@ use iced::{
     time::Duration,
     widget::{Column, Text},
 };
+use plotters::style::RGBColor;
 
 use crate::{components::chart::SensorChart, message::Message};
 
@@ -18,14 +19,20 @@ const FONT_BOLD: Font = Font {
 };
 
 pub struct ChartPage {
-    chart: SensorChart,
+    chart: SensorChart<2>,
 }
 
 impl ChartPage {
     pub fn new() -> (Self, Task<Message>) {
         (
             Self {
-                chart: SensorChart::new(std::iter::empty()),
+                chart: SensorChart::new(
+                    [
+                        ("Series 1".to_string(), RGBColor(255, 0, 0)),
+                        ("Series 2".to_string(), RGBColor(0, 255, 0)),
+                    ],
+                    RGBColor(0, 200, 0),
+                ),
             },
             Task::done(Message::Tick),
         )
@@ -37,7 +44,7 @@ impl ChartPage {
                 let now = Utc::now();
                 let percent = rand::random::<f32>() * 100.0;
                 let percent2 = rand::random::<f32>() * 100.0;
-                self.chart.push_data(now, percent, percent2);
+                self.chart.push_data(now, [Some(percent), Some(percent2)]);
             }
             _ => {
                 todo!("Add full message match");
