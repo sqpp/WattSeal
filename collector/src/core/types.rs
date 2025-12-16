@@ -64,7 +64,7 @@ pub struct GPUData {
 }
 
 #[derive(Debug, Clone)]
-pub struct ScreenInfo {
+pub struct ScreenData {
     pub resolution: (u32, u32),
     pub refresh_rate_hz: u32,
     pub technology: String,
@@ -72,30 +72,19 @@ pub struct ScreenInfo {
 }
 
 #[derive(Debug, Clone)]
-pub struct BatteryInfo {
+pub struct BatteryData {
     pub manufacturer: String,
     pub model: String,
     pub serial_number: String,
     pub design_capacity_mwh: u32,
     pub full_charge_capacity_mwh: u32,
     pub cycle_count: u32,
-    pub health_percent: u8,
 }
 
-pub struct HardwareInfo {
-    pub os: OS,
-    pub total_ram_gb: u8,
-    pub cpu_list: Vec<String>,
-    pub gpu_list: Vec<String>,
-    pub disk_list: Vec<String>,
-    pub peripherals: Vec<String>,
-    pub network_card: String,
-    pub screen_info: ScreenInfo,
-    pub battery_info: BatteryInfo,
-}
-
-pub enum OS {
-    Windows,
-    Linux,
-    MacOS,
+#[derive(Debug, Clone)]
+pub struct PeripheralsData {
+    pub device_name: String,
+    pub device_type: String,
+    pub manufacturer: String,
+    pub is_connected: bool,
 }

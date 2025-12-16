@@ -191,7 +191,6 @@ impl MSRReader {
         last_energy_value: Option<f64>,
         duration: f64,
     ) -> Option<f64> {
-        
         match (current_energy_value, last_energy_value) {
             (Some(current), Some(last)) => {
                 let energy_diff = (current as u64).saturating_sub(last as u64);
@@ -234,7 +233,7 @@ enum IntelMSR {
     MSR_PKG_ENERGY_STATUS = 0x611,
     MSR_PP0_ENERGY_STATUS = 0x639,
     MSR_PP1_ENERGY_STATUS = 0x641,
-    MSR_DRAM_ENERGY_STATUS = 0x619,
+    MSR_DRAM_ENERGY_STATUS = 0x618,
 }
 
 impl MSR for IntelMSR {

@@ -20,183 +20,190 @@ use tray_icon::{
     menu::{Menu, MenuEvent, MenuItem, MenuItemKind},
 };
 
-// use memmap2::MmapOptions;
-// use std::{fs::File, path::Path, process::Command, slice};
-// use std::os::windows::process::CommandExt;
-
-// const HWINFO_SHARED_MEM_NAMES: [&str; 2] = [
-//     r"\\.\Global\HWiNFO_SENS_SM1",
-//     r"\\.\Global\HWiNFO_SENS_SM2",
-// ];
-
-// #[repr(C)]
-// #[derive(Debug, Copy, Clone, Default)]
-// struct SensorEntry {
-//     id: u32,
-//     value: f32,
-//     // add more fields if needed from HWInfo docs
-// }
-
-// fn main() {
-//     let installer_path = r"C:\Users\pmall\Downloads\hw64_410.exe"; // path to downloaded installer
-
-//     if !Path::new(installer_path).exists() {
-//         println!("❌ Please download HWiNFO64.EXE to {}", installer_path);
-//         return;
-//     }
-
-//     // Silent install without showing installer window
-//     let status = Command::new(installer_path)
-//         .args(&["/install", "/silent", "/norestart"])
-//         .creation_flags(0x08000000) // CREATE_NO_WINDOW
-//         .status()
-//         .expect("Failed to run HWInfo installer");
-
-//     if !status.success() {
-//         println!("❌ HWInfo installation failed");
-//         return;
-//     }
-
-//     println!("✅ HWInfo installed. Starting in sensor-only mode...");
-
-//     // Start HWInfo sensor-only hidden
-//     let _hwinfo = Command::new(r"C:\Program Files\HWiNFO64\HWiNFO64.EXE")
-//         .args(&["/sensoronly", "/minimized"])
-//         .creation_flags(0x08000000) // CREATE_NO_WINDOW
-//         .spawn()
-//         .expect("Failed to start HWInfo in sensor-only mode");
-
-//     // Give HWInfo a few seconds to initialize sensors
-//     thread::sleep(Duration::from_secs(3));
-
-//     // Try both possible shared memory names
-//     let mut mmap_opt = None;
-//     for name in HWINFO_SHARED_MEM_NAMES.iter() {
-//         if let Ok(file) = File::open(name) {
-//             mmap_opt = Some(unsafe { MmapOptions::new().map(&file).expect("Failed to map shared memory") });
-//             break;
-//         }
-//     }
-
-//     let mmap = match mmap_opt {
-//         Some(m) => m,
-//         None => {
-//             println!("❌ Could not open HWInfo shared memory. Make sure HWInfo is running.");
-//             return;
-//         }
-//     };
-
-//     // Read sensors
-//     let entries: &[SensorEntry] = unsafe {
-//         let ptr = mmap.as_ptr() as *const SensorEntry;
-//         slice::from_raw_parts(ptr, mmap.len() / std::mem::size_of::<SensorEntry>())
-//     };
-
-//     println!("HWInfo sensors detected: {}", entries.len());
-//     for entry in entries.iter().take(20) { // just print first 20 for brevity
-//         println!("Sensor ID: {:>4}, Value: {:.2}", entry.id, entry.value);
-//     }
-
-//     println!("✅ Done reading HWInfo sensors.");
-
-//     // Optional: uninstall HWInfo silently
-//     let uninstall_status = Command::new(installer_path)
-//         .args(&["/uninstall", "/silent"])
-//         .creation_flags(0x08000000) // CREATE_NO_WINDOW
-//         .status()
-//         .expect("Failed to uninstall HWInfo");
-
-//     if uninstall_status.success() {
-//         println!("✅ HWInfo uninstalled safely");
-//     }
-// }
+use hardware_query::HardwareInfo;
 
 fn main() {
     check_permissions();
+ 
+    println!("\n========== SYSTEM HARDWARE INFORMATION ==========\n");
+    
+    // Get complete system information
+    let hw_info = HardwareInfo::query().unwrap();
 
-    // Initialize hardware informations
-    println!("\nDETECTED HARDWARE:\n");
-    let sensors_cpu = sensors::cpu::get_cpu_list();
-    println!("Detected CPU cores: {:?}", sensors_cpu.len());
+    // ===== CPU INFORMATION =====
+    println!("===== CPU INFORMATION =====");
+    let cpu = hw_info.cpu();
+    println!("CPU: {} {} - {} cores, {} threads",
+        cpu.vendor(),
+        cpu.model_name(),
+        cpu.physical_cores(),
+        cpu.logical_cores()
+    );
 
-    let sensors_gpu = sensors::gpu::get_gpu_list();
-    println!("Detected GPUs: {:?}", sensors_gpu.len());
-
-    println!();
-
-    println!("INITIALIZING DRIVERS:\n");
-    let sensor_cpu = sensors::cpu::get_cpu_power_sensor(0);
-    match &sensor_cpu {
-        Ok(_) => println!("CPU Power Sensor initialized successfully."),
-        Err(e) => println!("Failed to initialize CPU Power Sensor: {:?}", e),
+    if cpu.has_feature("avx2") && cpu.has_feature("fma") {
+        println!("CPU optimized for SIMD operations");
     }
 
-    println!();
-
-    println!("POWER CONSUMPTION MONITORING:");
-    loop {
-        thread::sleep(Duration::from_millis(1000));
-
-        println!("\nCPU {:?}:", sensors_cpu.first().unwrap());
-        match sensor_cpu.as_ref().unwrap().read_full_data() {
-            Ok(event) => {
-                println!(
-                    "Power Consumption PKG: {:.3} W",
-                    event.data().total_power_watts.unwrap_or(-1.0)
-                );
-                println!(
-                    "Power Consumption PP0: {:.3} W",
-                    event.data().pp0_power_watts.unwrap_or(-1.0)
-                );
-                println!(
-                    "Power Consumption PP1: {:.3} W",
-                    event.data().pp1_power_watts.unwrap_or(-1.0)
-                );
-                println!(
-                    "Power Consumption DRAM: {:.3} W",
-                    event.data().dram_power_watts.unwrap_or(-1.0)
-                );
-                println!("CPU Usage: {:.2} %", event.data().usage_percent);
-            }
-            Err(e) => {
-                println!("Error reading CPU data: {:?}", e);
-            }
+    // ===== GPU INFORMATION =====
+    println!("\n===== GPU INFORMATION =====");
+    for gpu in hw_info.gpus() {
+        println!("GPU: {} {} - {} GB VRAM", 
+            gpu.vendor(), gpu.model_name(), gpu.memory_gb());
+        
+        if gpu.supports_cuda() {
+            println!("  CUDA support available");
         }
+        if gpu.supports_opencl() {
+            println!("  OpenCL support available");
+        }
+    }
 
-        let mut index = 0;
-        let mut prev = gpu::GPUVendor::Other;
-        for (_, gpu) in sensors_gpu.iter().enumerate() {
-            let current = gpu::GPUVendor::from_str(&gpu);
-            if prev.differs(current) && current != gpu::GPUVendor::Other {
-                println!("\nGPU {:?}:", gpu);
+    // ===== MEMORY INFORMATION =====
+    println!("\n===== MEMORY INFORMATION =====");
+    let memory = hw_info.memory();
+    println!("Memory: {} GB total, {} GB available",
+        memory.total_gb(),
+        memory.available_gb()
+    );
 
-                let sensor_gpu = sensors::gpu::get_gpu_power_sensor(&gpu, index);
-                match sensor_gpu {
-                    Ok(sensor) => match sensor.read_full_data() {
-                        Ok(event) => {
-                            println!(
-                                "Power Consumption: {:.3} W",
-                                event.data().total_power_watts.unwrap_or(-1.0)
-                            );
-                            println!("GPU Usage: {:.2} %", event.data().usage_percent.unwrap_or(-1.0));
-                            println!("VRAM Usage: {:.2} %", event.data().vram_usage_percent.unwrap_or(-1.0));
-                        }
-                        Err(e) => {
-                            println!("Error reading GPU data: {:?}", e);
-                        }
-                    },
-                    Err(e) => {
-                        println!("Error initializing GPU sensor: {:?}", e);
-                    }
-                }
+    // ===== THERMAL INFORMATION (FANS) =====
+    println!("\n===== THERMAL INFORMATION =====");
+    let thermal = hw_info.thermal();
+    println!("Temperature Sensors:");
+    for sensor in thermal.sensors() {
+        println!("  {}: {:.1}°C", sensor.name, sensor.temperature);
+    }
+    
+    println!("\nFan Information:");
+    for fan in thermal.fans() {
+        println!("  {}: {} % of speed", fan.name, fan.speed_percent.unwrap());
+    }
 
-                index = 0;
-            }
-            prev = gpu::GPUVendor::from_str(&gpu);
-            index += 1;
+    // ===== BATTERY INFORMATION =====
+    println!("\n===== BATTERY INFORMATION =====");
+    if let Some(battery) = hw_info.battery() {
+        println!("Charge: {}%", battery.percentage());
+        println!("Status: {:?}", battery.status());
+    } else {
+        println!("No battery detected (Desktop system)");
+    }
+
+    // ===== USB DEVICES =====
+    println!("\n===== USB DEVICES =====");
+    let usb_devices = hw_info.usb_devices();
+    println!("Found {} USB devices:", usb_devices.len());
+    for (i, device) in usb_devices.iter().enumerate() {
+        println!("  [{}] {} - {}", i + 1, device.device_class, device.connected);
+    }
+
+    // ===== POWER SETTINGS =====
+    println!("\n===== POWER SETTINGS =====");
+    let power_profile = hw_info.power_profile();
+    println!("Active Power Profile: {:?}", power_profile);
+
+    // ===== AI ACCELERATORS =====
+    if !hw_info.npus().is_empty() {
+        println!("\n===== AI ACCELERATORS =====");
+        println!("AI accelerators found: {} NPUs", hw_info.npus().len());
+        for npu in hw_info.npus() {
+            println!("  NPU: {} {}", npu.vendor(), npu.model_name());
         }
     }
 }
+
+// fn main() {
+//     check_permissions();
+
+//     // Initialize hardware informations
+//     println!("\nDETECTED HARDWARE:\n");
+
+//     println!();
+
+//     println!("INITIALIZING DRIVERS:\n");
+//     let sensor_cpu = sensors::cpu::get_cpu_power_sensor(0);
+//     match &sensor_cpu {
+//         Ok(_) => println!("CPU Power Sensor initialized successfully."),
+//         Err(e) => println!("Failed to initialize CPU Power Sensor: {:?}", e),
+//     }
+
+//     println!();
+
+//     println!("POWER CONSUMPTION MONITORING:");
+//     loop {
+//         thread::sleep(Duration::from_millis(1000));
+
+//         println!("\nCPU :");
+//         match sensor_cpu.as_ref().unwrap().read_full_data() {
+//             Ok(event) => {
+//                 println!(
+//                     "Power Consumption PKG: {:.3} W",
+//                     event.data().total_power_watts.unwrap_or(-1.0)
+//                 );
+//                 println!(
+//                     "Power Consumption PP0: {:.3} W",
+//                     event.data().pp0_power_watts.unwrap_or(-1.0)
+//                 );
+//                 println!(
+//                     "Power Consumption PP1: {:.3} W",
+//                     event.data().pp1_power_watts.unwrap_or(-1.0)
+//                 );
+//                 println!(
+//                     "Power Consumption DRAM: {:.3} W",
+//                     event.data().dram_power_watts.unwrap_or(-1.0)
+//                 );
+//                 println!("CPU Usage: {:.2} %", event.data().usage_percent);
+//             }
+//             Err(e) => {
+//                 println!("Error reading CPU data: {:?}", e);
+//             }
+//         }
+
+//             let current = gpu::GPUVendor::from_str(&gpu);
+//             if prev.differs(current) && current != gpu::GPUVendor::Other {
+//                 println!("\nGPU :");
+
+//                 let sensor_gpu = sensors::gpu::get_gpu_power_sensor(&gpu, index);
+//                 match sensor_gpu {
+//                     Ok(sensor) => match sensor.read_full_data() {
+//                         Ok(event) => {
+//                             println!(
+//                                 "Power Consumption: {:.3} W",
+//                                 event.data().total_power_watts.unwrap_or(-1.0)
+//                             );
+//                             println!("GPU Usage: {:.2} %", event.data().usage_percent.unwrap_or(-1.0));
+//                             println!("VRAM Usage: {:.2} %", event.data().vram_usage_percent.unwrap_or(-1.0));
+//                         }
+//                         Err(e) => {
+//                             println!("Error reading GPU data: {:?}", e);
+//                         }
+//                     },
+//                     Err(e) => {
+//                         println!("Error initializing GPU sensor: {:?}", e);
+//                     }
+//                 }
+
+//                 index = 0;
+//             }
+//             prev = gpu::GPUVendor::from_str(&gpu);
+//             index += 1;
+//         }
+//     }
+// }
+
+// use display_info::DisplayInfo;
+// use std::time::Instant;
+
+// fn main() {
+//   let start = Instant::now();
+
+//   let display_infos = DisplayInfo::all().unwrap();
+//   for display_info in display_infos {
+//     println!("display_info {display_info:?}");
+//   }
+//   let display_info = DisplayInfo::from_point(100, 100).unwrap();
+//   println!("display_info {display_info:?}");
+//   println!("运行耗时: {:?}", start.elapsed());
+// }
 
 // // pub fn main() {
 //     // let conn = Connection::open("test.db").unwrap();
