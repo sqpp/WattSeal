@@ -273,6 +273,16 @@ impl Database {
         tables::delete_data_before_date(&self.conn, before_date)
     }
 
+    /// Get total count of CPU data entries
+    pub fn get_cpu_data_count(&self) -> Result<i64> {
+        tables::get_cpu_data_count(&self.conn)
+    }
+
+    /// Get total count of GPU data entries
+    pub fn get_gpu_data_count(&self) -> Result<i64> {
+        tables::get_gpu_data_count(&self.conn)
+    }
+
     // ===== SCREEN DATA OPERATIONS =====
 
     /// Get the last N screen data entries

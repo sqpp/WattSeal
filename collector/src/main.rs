@@ -11,102 +11,130 @@ use std::{
 
 use chrono::{DateTime, Utc};
 use collector::{
+    core::types::{BatteryData, CPUData, Event, GPUData, PeripheralsData, ScreenData},
     database::Database,
     sensors::{self, Sensor, cpu, gpu},
 };
+use hardware_query::HardwareInfo;
 use rusqlite::{Connection, Result, ToSql};
 use tray_icon::{
     Icon, TrayIconBuilder, TrayIconEvent,
     menu::{Menu, MenuEvent, MenuItem, MenuItemKind},
 };
 
-use hardware_query::HardwareInfo;
-
 fn main() {
     check_permissions();
- 
-    println!("\n========== SYSTEM HARDWARE INFORMATION ==========\n");
-    
-    // Get complete system information
+
+    println!("\n========== INITIALIZING SYSTEM ==========\n");
+
+    // Initialize database
+    let database = Database::new("power_monitoring.db").unwrap();
+    database.create_tables_if_not_exists().unwrap();
+    println!("✓ Database initialized");
+
+    // Initialize hardware information
     let hw_info = HardwareInfo::query().unwrap();
+    println!("✓ Hardware information loaded");
 
-    // ===== CPU INFORMATION =====
-    println!("===== CPU INFORMATION =====");
-    let cpu = hw_info.cpu();
-    println!("CPU: {} {} - {} cores, {} threads",
-        cpu.vendor(),
-        cpu.model_name(),
-        cpu.physical_cores(),
-        cpu.logical_cores()
-    );
-
-    if cpu.has_feature("avx2") && cpu.has_feature("fma") {
-        println!("CPU optimized for SIMD operations");
-    }
-
-    // ===== GPU INFORMATION =====
-    println!("\n===== GPU INFORMATION =====");
-    for gpu in hw_info.gpus() {
-        println!("GPU: {} {} - {} GB VRAM", 
-            gpu.vendor(), gpu.model_name(), gpu.memory_gb());
-        
-        if gpu.supports_cuda() {
-            println!("  CUDA support available");
-        }
-        if gpu.supports_opencl() {
-            println!("  OpenCL support available");
+    // Initialize CPU sensor
+    println!("\nInitializing sensors...");
+    let sensor_cpu = sensors::cpu::get_cpu_power_sensor(0);
+    match &sensor_cpu {
+        Ok(_) => println!("✓ CPU Power Sensor initialized successfully"),
+        Err(e) => {
+            eprintln!("✗ Failed to initialize CPU Power Sensor: {:?}", e);
+            eprintln!("Note: Make sure you're running as Administrator");
         }
     }
 
-    // ===== MEMORY INFORMATION =====
-    println!("\n===== MEMORY INFORMATION =====");
-    let memory = hw_info.memory();
-    println!("Memory: {} GB total, {} GB available",
-        memory.total_gb(),
-        memory.available_gb()
-    );
+    // Initialize GPU sensor for Intel Arc
+    let gpu_sensors: Vec<_> = hw_info
+        .gpus()
+        .iter()
+        .enumerate()
+        .filter_map(|(index, gpu)| {
+            let gpu_name = format!("{} {}", gpu.vendor(), gpu.model_name());
+            match sensors::gpu::get_gpu_power_sensor(&gpu_name, index as u32) {
+                Ok(sensor) => {
+                    println!("✓ GPU Sensor initialized for: {}", gpu_name);
+                    Some(sensor)
+                }
+                Err(e) => {
+                    println!("✗ Failed to initialize GPU sensor for {}: {:?}", gpu_name, e);
+                    None
+                }
+            }
+        })
+        .collect();
 
-    // ===== THERMAL INFORMATION (FANS) =====
-    println!("\n===== THERMAL INFORMATION =====");
-    let thermal = hw_info.thermal();
-    println!("Temperature Sensors:");
-    for sensor in thermal.sensors() {
-        println!("  {}: {:.1}°C", sensor.name, sensor.temperature);
-    }
-    
-    println!("\nFan Information:");
-    for fan in thermal.fans() {
-        println!("  {}: {} % of speed", fan.name, fan.speed_percent.unwrap());
-    }
+    println!("\n========== POWER CONSUMPTION MONITORING ==========");
+    println!("Logging data to database every second. Press Ctrl+C to stop.\n");
 
-    // ===== BATTERY INFORMATION =====
-    println!("\n===== BATTERY INFORMATION =====");
-    if let Some(battery) = hw_info.battery() {
-        println!("Charge: {}%", battery.percentage());
-        println!("Status: {:?}", battery.status());
-    } else {
-        println!("No battery detected (Desktop system)");
-    }
+    let mut iteration = 0;
+    loop {
+        thread::sleep(Duration::from_millis(1000));
+        iteration += 1;
 
-    // ===== USB DEVICES =====
-    println!("\n===== USB DEVICES =====");
-    let usb_devices = hw_info.usb_devices();
-    println!("Found {} USB devices:", usb_devices.len());
-    for (i, device) in usb_devices.iter().enumerate() {
-        println!("  [{}] {} - {}", i + 1, device.device_class, device.connected);
-    }
+        println!("\n--- Iteration {} ---", iteration);
 
-    // ===== POWER SETTINGS =====
-    println!("\n===== POWER SETTINGS =====");
-    let power_profile = hw_info.power_profile();
-    println!("Active Power Profile: {:?}", power_profile);
+        // Read and save CPU data
+        if let Ok(ref sensor) = sensor_cpu {
+            match sensor.read_full_data() {
+                Ok(event) => {
+                    // Save to database
+                    match database.insert_cpu_data(&event) {
+                        Ok(_) => println!("✓ CPU data saved to database"),
+                        Err(e) => eprintln!("✗ Failed to save CPU data: {:?}", e),
+                    }
 
-    // ===== AI ACCELERATORS =====
-    if !hw_info.npus().is_empty() {
-        println!("\n===== AI ACCELERATORS =====");
-        println!("AI accelerators found: {} NPUs", hw_info.npus().len());
-        for npu in hw_info.npus() {
-            println!("  NPU: {} {}", npu.vendor(), npu.model_name());
+                    // Print CPU data
+                    println!("CPU:");
+                    println!("  Power PKG:  {:.3} W", event.data().total_power_watts.unwrap_or(-1.0));
+                    println!("  Power PP0:  {:.3} W", event.data().pp0_power_watts.unwrap_or(-1.0));
+                    println!("  Power PP1:  {:.3} W", event.data().pp1_power_watts.unwrap_or(-1.0));
+                    println!("  Power DRAM: {:.3} W", event.data().dram_power_watts.unwrap_or(-1.0));
+                    println!("  Usage:      {:.2} %", event.data().usage_percent);
+                }
+                Err(e) => {
+                    eprintln!("✗ Error reading CPU data: {:?}", e);
+                }
+            }
+        }
+
+        // Read and save GPU data
+        for (index, gpu_sensor) in gpu_sensors.iter().enumerate() {
+            match gpu_sensor.read_full_data() {
+                Ok(event) => {
+                    // Save to database
+                    match database.insert_gpu_data(&event) {
+                        Ok(_) => println!("✓ GPU {} data saved to database", index),
+                        Err(e) => eprintln!("✗ Failed to save GPU {} data: {:?}", index, e),
+                    }
+
+                    // Print GPU data
+                    println!("GPU {}:", index);
+                    println!("  Power:       {:.3} W", event.data().total_power_watts.unwrap_or(-1.0));
+                    println!("  Usage:       {:.2} %", event.data().usage_percent.unwrap_or(-1.0));
+                    println!(
+                        "  VRAM Usage:  {:.2} %",
+                        event.data().vram_usage_percent.unwrap_or(-1.0)
+                    );
+                }
+                Err(e) => {
+                    eprintln!("✗ Error reading GPU {} data: {:?}", index, e);
+                }
+            }
+        }
+
+        // Print database stats every 10 iterations
+        if iteration % 10 == 0 {
+            if let Ok(cpu_count) = database.get_cpu_data_count() {
+                println!(
+                    "\n Database: {} CPU records, {} GPU records",
+                    cpu_count,
+                    database.get_gpu_data_count().unwrap_or(0)
+                );
+            }
         }
     }
 }
