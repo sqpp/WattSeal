@@ -26,6 +26,8 @@ impl CollectorApp {
     }
 
     pub fn initialize(&mut self) -> Result<(), String> {
+        check_permissions()?;
+
         println!("\n========== INITIALIZING SYSTEM ==========\n");
         // Initialize hardware information
         let hw_info = match HardwareInfo::query() {
@@ -89,6 +91,32 @@ impl CollectorApp {
                 Ok(_) => println!("✓ Event data saved to database"),
                 Err(e) => eprintln!("✗ Failed to save event data: {:?}", e),
             }
+        }
+    }
+}
+
+fn check_permissions() -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        if !is_admin::is_admin() {
+            Err(
+                "This program requires Administrator privileges on Windows. Please run this program as Administrator."
+                    .to_string(),
+            )
+        } else {
+            Ok(())
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        if !is_root() {
+            Err(format!(
+                "This program requires root privileges on Linux. Please run with: sudo {}",
+                std::env::current_exe().unwrap().display()
+            ))
+        } else {
+            Ok(())
         }
     }
 }

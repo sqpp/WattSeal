@@ -23,33 +23,11 @@ use tray_icon::{
     menu::{Menu, MenuEvent, MenuItem, MenuItemKind},
 };
 
-fn main() -> () {
-    check_permissions();
-
+fn main() {
     let mut app = CollectorApp::new("power_monitoring.db").expect("Failed to create CollectorApp");
     app.initialize().expect("Failed to initialize CollectorApp");
 
     app.run();
-}
-
-fn check_permissions() {
-    #[cfg(target_os = "windows")]
-    {
-        if !is_admin::is_admin() {
-            eprintln!("This program requires Administrator privileges on Windows.");
-            eprintln!("Please run this program as Administrator.");
-            std::process::exit(1);
-        }
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        if !is_root() {
-            eprintln!("This program requires root privileges on Linux.");
-            eprintln!("Please run with: sudo {}", std::env::current_exe().unwrap().display());
-            std::process::exit(1);
-        }
-    }
 }
 
 // fn main() {
