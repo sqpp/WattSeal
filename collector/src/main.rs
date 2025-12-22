@@ -11,6 +11,7 @@ use std::{
 
 use chrono::{DateTime, Utc};
 use collector::{
+    CollectorApp,
     core::types::{BatteryData, CPUData, Event, GPUData, PeripheralsData, ScreenData, SensorData},
     database::Database,
     sensors::{self, Sensor, cpu, gpu},
@@ -22,65 +23,31 @@ use tray_icon::{
     menu::{Menu, MenuEvent, MenuItem, MenuItemKind},
 };
 
-fn main() {
+fn main() -> () {
     check_permissions();
 
-    println!("\n========== INITIALIZING SYSTEM ==========\n");
-    let mut sensors = Vec::new();
+    let mut app = CollectorApp::new("power_monitoring.db").expect("Failed to create CollectorApp");
+    app.initialize().expect("Failed to initialize CollectorApp");
 
-    // Initialize hardware information
-    let hw_info = HardwareInfo::query().unwrap();
-    println!("✓ Hardware information loaded");
+    app.run();
+}
 
-    // Initialize CPU sensor
-    println!("\nInitializing sensors...");
-    let sensor_cpu = sensors::cpu::get_cpu_power_sensor(0);
-    match sensor_cpu {
-        Ok(sensor) => {
-            println!("✓ CPU Power Sensor initialized successfully");
-            sensors.push(sensor);
-        }
-        Err(e) => {
-            eprintln!("✗ Failed to initialize CPU Power Sensor: {:?}", e);
-            eprintln!("Note: Make sure you're running as Administrator");
+fn check_permissions() {
+    #[cfg(target_os = "windows")]
+    {
+        if !is_admin::is_admin() {
+            eprintln!("This program requires Administrator privileges on Windows.");
+            eprintln!("Please run this program as Administrator.");
+            std::process::exit(1);
         }
     }
 
-    // Initialize GPU sensors
-    for (i, gpu) in hw_info.gpus().iter().enumerate() {
-        let gpu_name = format!("{} {}", gpu.vendor(), gpu.model_name());
-        let sensor_gpu = sensors::gpu::get_gpu_power_sensor(&gpu_name, i as u32);
-        match sensor_gpu {
-            Ok(sensor) => {
-                println!("✓ GPU Sensor {} initialized for: {}", i, gpu_name);
-                sensors.push(sensor);
-            }
-            Err(e) => {
-                println!("✗ Failed to initialize GPU sensor for {}: {:?}", gpu_name, e);
-            }
-        }
-    }
-
-    println!("\n========== SETTING UP DATABASE ==========");
-    // Initialize database
-    let mut database = Database::new("power_monitoring.db").unwrap();
-    database.create_tables_if_not_exists(&sensors).unwrap();
-    println!("✓ Database initialized");
-
-    println!("\n========== POWER CONSUMPTION MONITORING ==========");
-    println!("Logging data to database every second. Press Ctrl+C to stop.\n");
-
-    let mut iteration = 0;
-    loop {
-        thread::sleep(Duration::from_millis(1000));
-        iteration += 1;
-
-        println!("\n--- Iteration {} ---", iteration);
-
-        let event = Event::with_sensors(&sensors);
-        match database.insert_event(&event) {
-            Ok(_) => println!("✓ Event data saved to database"),
-            Err(e) => eprintln!("✗ Failed to save event data: {:?}", e),
+    #[cfg(target_os = "linux")]
+    {
+        if !is_root() {
+            eprintln!("This program requires root privileges on Linux.");
+            eprintln!("Please run with: sudo {}", std::env::current_exe().unwrap().display());
+            std::process::exit(1);
         }
     }
 }
@@ -282,23 +249,3 @@ fn main() {
 //     //     thread::sleep(Duration::from_secs(1));
 //     // }
 // // }
-
-fn check_permissions() {
-    #[cfg(target_os = "windows")]
-    {
-        if !is_admin::is_admin() {
-            eprintln!("This program requires Administrator privileges on Windows.");
-            eprintln!("Please run this program as Administrator.");
-            std::process::exit(1);
-        }
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        if !is_root() {
-            eprintln!("This program requires root privileges on Linux.");
-            eprintln!("Please run with: sudo {}", std::env::current_exe().unwrap().display());
-            std::process::exit(1);
-        }
-    }
-}
