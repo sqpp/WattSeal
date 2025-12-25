@@ -211,7 +211,7 @@ impl TooltipData {
     }
 }
 
-pub struct SensorChart<const N: usize> {
+pub struct SensorChart {
     cache: RefCell<Cache>,
     data_series: Vec<TimeSeries>,
     limit: Duration,
@@ -266,8 +266,8 @@ fn to_plotters_color(color: iced::Color) -> RGBColor {
     RGBColor(rgba[0], rgba[1], rgba[2])
 }
 
-impl<const N: usize> SensorChart<N> {
-    pub fn new(series: [(String, LineType); N], min_y: Option<f32>, max_y: Option<f32>, theme: AppTheme) -> Self {
+impl SensorChart {
+    pub fn new(series: Vec<(String, LineType)>, min_y: Option<f32>, max_y: Option<f32>, theme: AppTheme) -> Self {
         Self {
             cache: RefCell::default(),
             data_series: series.into_iter().map(Into::into).collect(),
@@ -284,7 +284,10 @@ impl<const N: usize> SensorChart<N> {
         self.cache.borrow_mut().clear();
     }
 
-    pub fn push_data(&mut self, time: DateTime<Utc>, values: [Option<f32>; N]) {
+    pub fn push_data(&mut self, time: DateTime<Utc>, values: Vec<Option<f32>>) {
+        if values.len() != self.data_series.len() {
+            return;
+        }
         let cutoff = time - chrono::Duration::from_std(self.limit).unwrap_or_default();
 
         for (ts, value) in self.data_series.iter_mut().zip(values) {
@@ -617,7 +620,7 @@ impl<const N: usize> SensorChart<N> {
     }
 }
 
-impl<const N: usize> Chart<Message> for SensorChart<N> {
+impl Chart<Message> for SensorChart {
     type State = ();
 
     fn update(

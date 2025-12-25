@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use chrono::{DateTime, Utc};
 use rusqlite::{Connection, Result, ToSql, params};
 
@@ -118,16 +120,16 @@ impl DatabaseEntry for GPUData {
 
 #[derive(Debug, Clone)]
 pub struct Event {
-    time: std::time::SystemTime,
+    time: SystemTime,
     data: Vec<SensorData>,
 }
 
 impl Event {
-    pub fn new(time: std::time::SystemTime, data: Vec<SensorData>) -> Self {
+    pub fn new(time: SystemTime, data: Vec<SensorData>) -> Self {
         Event { time, data }
     }
 
-    pub fn time(&self) -> std::time::SystemTime {
+    pub fn time(&self) -> SystemTime {
         self.time
     }
 

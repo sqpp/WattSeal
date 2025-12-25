@@ -22,13 +22,13 @@ const TITLE_FONT: Font = Font {
 };
 
 pub struct ChartPage {
-    chart: SensorChart<2>,
+    chart: SensorChart,
 }
 
 impl ChartPage {
     pub fn new(theme: AppTheme) -> (Self, Task<Message>) {
         let chart = SensorChart::new(
-            [
+            vec![
                 ("Series 1".into(), LineType::Area),
                 ("Series 2".into(), LineType::Dotted),
             ],
@@ -48,7 +48,7 @@ impl ChartPage {
             let now = Utc::now();
             self.chart.push_data(
                 now,
-                [
+                vec![
                     Some(rand::random::<f32>() * 100.0),
                     Some(rand::random::<f32>() * 1000.0),
                 ],
