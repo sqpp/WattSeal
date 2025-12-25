@@ -1,3 +1,4 @@
+use common::database::Database;
 use iced::{
     Element, Subscription, Task, Theme,
     time::{Duration, every},
@@ -21,6 +22,7 @@ pub struct App {
     settings_page: SettingsPage,
     header: Header,
     theme: AppTheme,
+    database: Database,
 }
 
 impl App {
@@ -28,6 +30,7 @@ impl App {
         let theme = AppTheme::Dracula;
         let (chart_page, task) = ChartPage::new(theme);
         let current_page = Page::Chart;
+        let database = Database::new().unwrap();
 
         (
             Self {
@@ -38,6 +41,7 @@ impl App {
                 optimization_page: OptimizationPage::new(),
                 settings_page: SettingsPage::new(),
                 theme,
+                database,
             },
             task,
         )

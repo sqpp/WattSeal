@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 collector = { path = "../collector" }
+common = { path = "../common" }
 sysinfo = "0.28"
 ctrlc = "3.2"
 image = "0.25"
