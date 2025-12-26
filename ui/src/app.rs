@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+
+use chrono::{DateTime, Utc};
 use common::database::Database;
 use iced::{
     Element, Subscription, Task, Theme,
@@ -6,7 +9,7 @@ use iced::{
 };
 
 use crate::{
-    components::header::Header,
+    components::{chart::ChartData, header::Header},
     message::Message,
     pages::{Page, chart::ChartPage, info::InfoPage, optimization::OptimizationPage, settings::SettingsPage},
     themes::AppTheme,
@@ -23,6 +26,7 @@ pub struct App {
     header: Header,
     theme: AppTheme,
     database: Database,
+    last_timestamp: Option<DateTime<Utc>>,
 }
 
 impl App {
@@ -42,6 +46,7 @@ impl App {
                 settings_page: SettingsPage::new(),
                 theme,
                 database,
+                last_timestamp: None,
             },
             task,
         )
@@ -49,7 +54,10 @@ impl App {
 
     pub fn update(&mut self, message: Message) {
         match message {
-            Message::Tick => self.chart_page.update(Message::Tick),
+            Message::Tick => {
+                let chart_data = self.load_latest_chart_data();
+                self.chart_page.update(Message::UpdateChartData(chart_data));
+            }
             Message::NavigateTo(page) => {
                 self.current_page = page;
                 self.header.set_title(&page.to_string());
@@ -58,7 +66,20 @@ impl App {
                 self.theme = theme;
                 self.chart_page.update_theme(theme);
             }
+            _ => {}
         }
+    }
+
+    fn load_latest_chart_data(&mut self) -> ChartData {
+        let mut chart_data: ChartData = HashMap::new();
+        let now = Utc::now();
+
+        chart_data.insert("CPU Usage".into(), (now, rand::random::<f32>() * 100.0));
+        chart_data.insert("CPU Power".into(), (now, rand::random::<f32>() * 65.0));
+        chart_data.insert("GPU Usage".into(), (now, rand::random::<f32>() * 100.0));
+        chart_data.insert("GPU Power".into(), (now, rand::random::<f32>() * 75.0));
+
+        chart_data
     }
 
     pub fn view(&self) -> Element<'_, Message> {

@@ -1,4 +1,8 @@
-use std::{cell::RefCell, collections::VecDeque, fmt::format};
+use std::{
+    cell::RefCell,
+    collections::{HashMap, VecDeque},
+    fmt::format,
+};
 
 use chrono::{DateTime, Utc};
 use iced::{
@@ -38,6 +42,8 @@ const TOOLTIP_PADDING: f32 = 8.0;
 const TOOLTIP_OFFSET: f32 = 12.0;
 const TOOLTIP_CORNER_RADIUS: f32 = 4.0;
 const TOOLTIP_LINE_HEIGHT: f32 = 16.0;
+
+pub type ChartData = HashMap<String, (DateTime<Utc>, f32)>;
 
 #[derive(Debug, Clone, Copy)]
 pub struct ChartStyle {
@@ -213,7 +219,7 @@ impl TooltipData {
 
 pub struct SensorChart {
     cache: RefCell<Cache>,
-    data_series: Vec<TimeSeries>,
+    data_series: HashMap<String, TimeSeries>,
     limit: Duration,
     hovered: RefCell<Option<TooltipData>>,
     range: Range,
@@ -232,15 +238,13 @@ pub enum LineType {
 }
 
 struct TimeSeries {
-    label: String,
     data: VecDeque<(DateTime<Utc>, f32)>,
     line_type: LineType,
 }
 
-impl From<(String, LineType)> for TimeSeries {
-    fn from((label, line_type): (String, LineType)) -> Self {
+impl From<LineType> for TimeSeries {
+    fn from(line_type: LineType) -> Self {
         Self {
-            label,
             data: VecDeque::new(),
             line_type,
         }
@@ -270,7 +274,10 @@ impl SensorChart {
     pub fn new(series: Vec<(String, LineType)>, min_y: Option<f32>, max_y: Option<f32>, theme: AppTheme) -> Self {
         Self {
             cache: RefCell::default(),
-            data_series: series.into_iter().map(Into::into).collect(),
+            data_series: series
+                .into_iter()
+                .map(|(label, line_type)| (label, TimeSeries::from(line_type)))
+                .collect(),
             limit: Duration::from_secs(PLOT_SECONDS as u64),
             hovered: RefCell::default(),
             range: (min_y.unwrap_or(VALUE_MIN), max_y.unwrap_or(VALUE_MAX)),
@@ -284,23 +291,28 @@ impl SensorChart {
         self.cache.borrow_mut().clear();
     }
 
-    pub fn push_data(&mut self, time: DateTime<Utc>, values: Vec<Option<f32>>) {
-        if values.len() != self.data_series.len() {
+    pub fn push_data(&mut self, data: ChartData) {
+        if data.is_empty() {
             return;
         }
-        let cutoff = time - chrono::Duration::from_std(self.limit).unwrap_or_default();
 
-        for (ts, value) in self.data_series.iter_mut().zip(values) {
-            let Some(value) = value else { continue };
+        for (label, (time, value)) in data {
+            let cutoff = time - chrono::Duration::from_std(self.limit).unwrap_or_default();
 
-            ts.data.push_front((time, value));
+            if let Some(ts) = self.data_series.get_mut(&label) {
+                ts.data.push_front((time, value));
 
-            if self.dynamic_range {
-                self.range = (self.range.0.min(value), self.range.1.max(value));
-            }
+                if self.dynamic_range {
+                    self.range = (self.range.0.min(value), self.range.1.max(value));
+                }
 
-            while ts.data.back().is_some_and(|(t, _)| *t < cutoff) {
-                ts.data.pop_back();
+                while ts.data.back().is_some_and(|(t, _)| *t < cutoff) {
+                    ts.data.pop_back();
+                }
+            } else {
+                let mut ts = TimeSeries::from(LineType::default());
+                ts.data.push_front((time, value));
+                self.data_series.insert(label, ts);
             }
         }
 
@@ -314,7 +326,7 @@ impl SensorChart {
     fn recalculate_range(&mut self) {
         let (min, max) = self
             .data_series
-            .iter()
+            .values()
             .flat_map(|s| s.data.iter().map(|(_, v)| *v))
             .fold((f32::MAX, f32::MIN), |(min, max), v| (min.min(v), max.max(v)));
 
@@ -337,7 +349,7 @@ impl SensorChart {
     fn time_bounds(&self) -> (DateTime<Utc>, DateTime<Utc>) {
         let newest = self
             .data_series
-            .iter()
+            .values()
             .filter_map(|series| series.newest_time())
             .max()
             .unwrap_or_else(Utc::now);
@@ -382,7 +394,7 @@ impl SensorChart {
             .draw()
             .expect("failed to draw chart mesh");
 
-        for (i, series) in self.data_series.iter().enumerate() {
+        for (i, (label, series)) in self.data_series.iter().enumerate() {
             let color = style.series_color(i);
             let data: Vec<_> = series.iter().collect();
 
@@ -413,7 +425,7 @@ impl SensorChart {
 
             annotation
                 .expect("failed to draw series")
-                .label(&series.label)
+                .label(label)
                 .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], color.stroke_width(2)));
         }
 
@@ -541,8 +553,8 @@ impl SensorChart {
         self.data_series
             .iter()
             .enumerate()
-            .filter_map(|(idx, s)| s.newest_time().map(|_| (idx, s)))
-            .flat_map(|(idx, s)| s.data.iter().map(move |d| (idx, s.label.clone(), d)))
+            .filter_map(|(idx, (label, s))| s.newest_time().map(|_| (idx, label.clone(), s)))
+            .flat_map(|(idx, label, s)| s.data.iter().map(move |d| (idx, label.clone(), d)))
             .filter_map(|(series_idx, label, (time, value))| {
                 let px = self.point_x_for_time(*time, oldest, total_ms, chart_bounds.width);
                 let py = self.point_y_for_value(*value, chart_bounds.height);

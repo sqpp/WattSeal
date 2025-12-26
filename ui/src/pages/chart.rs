@@ -27,15 +27,7 @@ pub struct ChartPage {
 
 impl ChartPage {
     pub fn new(theme: AppTheme) -> (Self, Task<Message>) {
-        let chart = SensorChart::new(
-            vec![
-                ("Series 1".into(), LineType::Area),
-                ("Series 2".into(), LineType::Dotted),
-            ],
-            None,
-            None,
-            theme,
-        );
+        let chart = SensorChart::new(vec![], None, None, theme);
         (Self { chart }, Task::done(Message::Tick))
     }
 
@@ -44,15 +36,11 @@ impl ChartPage {
     }
 
     pub fn update(&mut self, message: Message) {
-        if let Message::Tick = message {
-            let now = Utc::now();
-            self.chart.push_data(
-                now,
-                vec![
-                    Some(rand::random::<f32>() * 100.0),
-                    Some(rand::random::<f32>() * 1000.0),
-                ],
-            );
+        match message {
+            Message::UpdateChartData(data) => {
+                self.chart.push_data(data);
+            }
+            _ => {}
         }
     }
 
