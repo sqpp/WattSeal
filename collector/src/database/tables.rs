@@ -1,5 +1,6 @@
 use common::DatabaseTable;
 
+use super::{CPUData, DatabaseEntry, GPUData};
 use crate::sensors::{CPUSensor, GPUSensor, SensorType};
 
 impl DatabaseTable for SensorType {
@@ -20,7 +21,7 @@ impl DatabaseTable for SensorType {
 
 impl DatabaseTable for CPUSensor {
     fn table_name(&self) -> &'static str {
-        "cpu_data"
+        CPUData::table_name_static()
     }
 
     fn columns(&self) -> &'static [&'static str] {
@@ -38,7 +39,7 @@ impl DatabaseTable for CPUSensor {
 
 impl DatabaseTable for GPUSensor {
     fn table_name(&self) -> &'static str {
-        "gpu_data"
+        GPUData::table_name_static()
     }
 
     fn columns(&self) -> &'static [&'static str] {

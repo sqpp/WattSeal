@@ -64,11 +64,17 @@ pub trait DatabaseTable {
 }
 
 pub trait DatabaseEntry {
+    fn table_name_static() -> &'static str;
     fn insert_sql(&self) -> String;
     fn insert_params<'a>(&'a self, timestamp_id: &'a i64) -> Vec<&'a dyn ToSql>;
+    fn select_last_n_sql(&self, n: i64) -> String;
 }
 
 impl DatabaseEntry for SensorData {
+    fn table_name_static() -> &'static str {
+        "sensor_data"
+    }
+
     fn insert_sql(&self) -> String {
         match self {
             SensorData::CPU(data) => data.insert_sql(),
@@ -84,11 +90,28 @@ impl DatabaseEntry for SensorData {
             _ => vec![],
         }
     }
+
+    fn select_last_n_sql(&self, n: i64) -> String {
+        let name = match self {
+            SensorData::CPU(_) => CPUData::table_name_static(),
+            SensorData::GPU(_) => GPUData::table_name_static(),
+            _ => "",
+        };
+
+        format!(
+            "SELECT * FROM timestamp JOIN {} ON timestamp.id = {}.timestamp_id ORDER BY timestamp.id DESC LIMIT {}",
+            name, name, n
+        )
+    }
 }
 
 impl DatabaseEntry for CPUData {
+    fn table_name_static() -> &'static str {
+        "cpu_data"
+    }
+
     fn insert_sql(&self) -> String {
-        "INSERT INTO cpu_data (timestamp_id, total_power_watts, pp0_power_watts, pp1_power_watts, dram_power_watts, usage_percent) VALUES (?1, ?2, ?3, ?4, ?5, ?6)".to_string()
+        format!("INSERT INTO {} (timestamp_id, total_power_watts, pp0_power_watts, pp1_power_watts, dram_power_watts, usage_percent) VALUES (?1, ?2, ?3, ?4, ?5, ?6)", Self::table_name_static()).to_string()
     }
 
     fn insert_params<'a>(&'a self, timestamp_id: &'a i64) -> Vec<&'a dyn ToSql> {
@@ -101,11 +124,19 @@ impl DatabaseEntry for CPUData {
             &self.usage_percent,
         ]
     }
+
+    fn select_last_n_sql(&self, _n: i64) -> String {
+        "".to_string()
+    }
 }
 
 impl DatabaseEntry for GPUData {
+    fn table_name_static() -> &'static str {
+        "gpu_data"
+    }
+
     fn insert_sql(&self) -> String {
-        "INSERT INTO gpu_data (timestamp_id, total_power_watts, usage_percent, vram_usage_percent) VALUES (?1, ?2, ?3, ?4)".to_string()
+        format!("INSERT INTO {} (timestamp_id, total_power_watts, usage_percent, vram_usage_percent) VALUES (?1, ?2, ?3, ?4)", Self::table_name_static()).to_string()
     }
 
     fn insert_params<'a>(&'a self, timestamp_id: &'a i64) -> Vec<&'a dyn ToSql> {
@@ -115,6 +146,10 @@ impl DatabaseEntry for GPUData {
             &self.usage_percent,
             &self.vram_usage_percent,
         ]
+    }
+
+    fn select_last_n_sql(&self, _n: i64) -> String {
+        "".to_string()
     }
 }
 
