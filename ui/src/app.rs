@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
-use common::database::Database;
+use common::{CPUData, Database, DatabaseEntry, GPUData};
 use iced::{
     Element, Subscription, Task, Theme,
     time::{Duration, every},
@@ -73,6 +73,8 @@ impl App {
     fn load_latest_chart_data(&mut self) -> ChartData {
         let mut chart_data: ChartData = HashMap::new();
         let now = Utc::now();
+        let res = self.database.select_last_n_events(1).unwrap();
+        println!("{:?}", res);
 
         chart_data.insert("CPU Usage".into(), (now, rand::random::<f32>() * 100.0));
         chart_data.insert("CPU Power".into(), (now, rand::random::<f32>() * 65.0));

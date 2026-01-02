@@ -90,6 +90,7 @@ impl Database {
         Ok(())
     }
 
+    // TODO: Select last n events from all sensor tables available cleanly
     pub fn select_last_n_events(&mut self, n: i64) -> Result<Vec<Event>> {
         let mut events = Vec::new();
         let mut stmt = self.conn.prepare(
