@@ -40,5 +40,11 @@ jobs:
           profile: minimal
           toolchain: stable
 
-      - name: Build Project
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Compile project
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+          RUSTC_WRAPPER: "sccache"
         run: cargo build --all
