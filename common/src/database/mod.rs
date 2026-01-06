@@ -4,7 +4,7 @@ use std::{collections::HashMap, hash::Hash, time::SystemTime};
 use chrono::{DateTime, Utc};
 use rusqlite::{Connection, OptionalExtension, Row, ToSql, Transaction, params};
 
-use crate::types::{CPUData, GPUData, SensorData};
+use crate::types::{CPUData, Event, GPUData, SensorData};
 
 pub static DATABASE_PATH: &str = "power_monitoring.db";
 
@@ -154,7 +154,7 @@ impl Database {
                 let sensor_data_list = self.fetch_sensor_data(table_name, &id_list)?;
                 for (ts_id, data) in sensor_data_list {
                     if let Some(event) = events_map.get_mut(&ts_id) {
-                        event.data.push(data);
+                        event.push_data(data);
                     }
                 }
             }
@@ -316,25 +316,5 @@ impl DatabaseEntry for GPUData {
             usage_percent: row.get("usage_percent")?,
             vram_usage_percent: row.get("vram_usage_percent")?,
         })
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Event {
-    time: SystemTime,
-    data: Vec<SensorData>,
-}
-
-impl Event {
-    pub fn new(time: SystemTime, data: Vec<SensorData>) -> Self {
-        Event { time, data }
-    }
-
-    pub fn time(&self) -> SystemTime {
-        self.time
-    }
-
-    pub fn data(&self) -> &Vec<SensorData> {
-        &self.data
     }
 }

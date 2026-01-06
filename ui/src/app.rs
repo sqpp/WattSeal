@@ -26,7 +26,6 @@ pub struct App {
     header: Header,
     theme: AppTheme,
     database: Database,
-    last_timestamp: Option<DateTime<Utc>>,
 }
 
 impl App {
@@ -46,7 +45,6 @@ impl App {
                 settings_page: SettingsPage::new(),
                 theme,
                 database,
-                last_timestamp: None,
             },
             task,
         )
@@ -72,14 +70,13 @@ impl App {
 
     fn load_latest_chart_data(&mut self) -> ChartData {
         let mut chart_data: ChartData = HashMap::new();
-        let now = Utc::now();
-        let res = self.database.select_last_n_events(1).unwrap();
-        println!("{:?}", res);
-
-        chart_data.insert("CPU Usage".into(), (now, rand::random::<f32>() * 100.0));
-        chart_data.insert("CPU Power".into(), (now, rand::random::<f32>() * 65.0));
-        chart_data.insert("GPU Usage".into(), (now, rand::random::<f32>() * 100.0));
-        chart_data.insert("GPU Power".into(), (now, rand::random::<f32>() * 75.0));
+        let res = self.database.select_last_n_events(1).unwrap_or_default();
+        for event in res {
+            let event_data: HashMap<String, (DateTime<Utc>, f32)> = event.into();
+            for (key, value) in event_data {
+                chart_data.insert(key, value);
+            }
+        }
 
         chart_data
     }

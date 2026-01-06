@@ -1,4 +1,55 @@
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display, time::SystemTime};
+
+#[derive(Debug, Clone)]
+pub struct Event {
+    time: SystemTime,
+    data: Vec<SensorData>,
+}
+
+impl Event {
+    pub fn new(time: SystemTime, data: Vec<SensorData>) -> Self {
+        Event { time, data }
+    }
+
+    pub fn time(&self) -> SystemTime {
+        self.time
+    }
+
+    pub fn data(&self) -> &Vec<SensorData> {
+        &self.data
+    }
+
+    pub fn push_data(&mut self, data: SensorData) {
+        self.data.push(data);
+    }
+}
+
+impl Into<HashMap<String, (chrono::DateTime<chrono::Utc>, f32)>> for Event {
+    fn into(self) -> HashMap<String, (chrono::DateTime<chrono::Utc>, f32)> {
+        let mut map = HashMap::new();
+        for sensor_data in self.data {
+            let datetime: chrono::DateTime<chrono::Utc> = self.time.into();
+            match sensor_data {
+                SensorData::CPU(cpu_data) => {
+                    if let Some(power) = cpu_data.total_power_watts {
+                        map.insert("CPU Power".to_string(), (datetime, power as f32));
+                    }
+                    map.insert("CPU Usage".to_string(), (datetime, cpu_data.usage_percent as f32));
+                }
+                SensorData::GPU(gpu_data) => {
+                    if let Some(power) = gpu_data.total_power_watts {
+                        map.insert("GPU Power".to_string(), (datetime, power as f32));
+                    }
+                    if let Some(usage) = gpu_data.usage_percent {
+                        map.insert("GPU Usage".to_string(), (datetime, usage as f32));
+                    }
+                }
+                _ => {}
+            }
+        }
+        map
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct CPUData {

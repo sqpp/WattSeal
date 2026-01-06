@@ -12,7 +12,7 @@ use iced::{
     time::Duration,
     widget::{
         Column, Text,
-        canvas::{self, Cache, Event, Frame, Geometry, event},
+        canvas::{self, Cache, Frame, Geometry, event},
         text_input::cursor,
     },
 };
@@ -609,7 +609,12 @@ impl SensorChart {
         }
     }
 
-    fn process_event(&self, event: Event, bounds: Rectangle, cursor: Cursor) -> (event::Status, Option<Message>) {
+    fn process_event(
+        &self,
+        event: canvas::Event,
+        bounds: Rectangle,
+        cursor: Cursor,
+    ) -> (event::Status, Option<Message>) {
         let captured = match event {
             canvas::Event::Mouse(mouse::Event::CursorLeft) => self.clear_hover(),
             canvas::Event::Mouse(mouse::Event::CursorMoved { .. }) => cursor
@@ -638,7 +643,7 @@ impl Chart<Message> for SensorChart {
     fn update(
         &self,
         _state: &mut Self::State,
-        event: Event,
+        event: canvas::Event,
         bounds: Rectangle,
         cursor: Cursor,
     ) -> (event::Status, Option<Message>) {
