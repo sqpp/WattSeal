@@ -40,11 +40,8 @@ jobs:
           profile: minimal
           toolchain: stable
 
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.9
+      - name: Uses cache
+        uses: Swatinem/rust-cache@v2
 
       - name: Compile project
-        env:
-          SCCACHE_GHA_ENABLED: "true"
-          RUSTC_WRAPPER: "sccache"
         run: cargo build --all

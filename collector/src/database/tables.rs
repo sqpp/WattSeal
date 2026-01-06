@@ -24,7 +24,7 @@ impl DatabaseTable for SensorType {
 fn timestamp_columns() -> Vec<String> {
     vec![
         "id           INTEGER PRIMARY KEY".to_string(),
-        "timestamp    INTEGER NOT NULL".to_string(),
+        "timestamp_id INTEGER NOT NULL".to_string(),
     ]
 }
 
