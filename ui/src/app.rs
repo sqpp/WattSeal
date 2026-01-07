@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
-use common::{CPUData, Database, DatabaseEntry, GPUData};
+use common::Database;
 use iced::{
     Element, Subscription, Task, Theme,
     time::{Duration, every},

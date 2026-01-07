@@ -1,4 +1,3 @@
-use chrono::Utc;
 use iced::{
     Element, Font, Length, Task,
     alignment::Alignment,
@@ -7,13 +6,9 @@ use iced::{
     widget::{Column, Text},
 };
 
-use crate::{
-    components::chart::{LineType, SensorChart},
-    message::Message,
-    themes::AppTheme,
-};
+use crate::{components::chart::SensorChart, message::Message, themes::AppTheme};
 
-const TITLE_FONT_SIZE: u16 = 22;
+const TITLE_FONT_SIZE: f32 = 22.0;
 const SAMPLE_EVERY: Duration = Duration::from_millis(1000);
 const TITLE_FONT: Font = Font {
     family: font::Family::Name("Noto Sans"),

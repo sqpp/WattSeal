@@ -1,29 +1,27 @@
 use std::{
     cell::RefCell,
     collections::{HashMap, VecDeque},
-    fmt::format,
 };
 
 use chrono::{DateTime, Utc};
 use iced::{
     Element, Length, Point, Rectangle, Size,
     alignment::Alignment,
+    event::Status,
     mouse::{self, Cursor},
     time::Duration,
     widget::{
         Column, Text,
-        canvas::{self, Cache, Event, Frame, Geometry, event},
-        text_input::cursor,
+        canvas::{self, Cache, Event, Frame, Geometry},
     },
 };
 use plotters::{
     coord::Shift,
-    data,
     prelude::ChartBuilder,
     style::{Color, RGBAColor, RGBColor},
 };
 use plotters_backend::DrawingBackend;
-use plotters_iced::{Chart, ChartWidget, DrawingArea, Renderer, plotters_backend};
+use plotters_iced2::{Chart, ChartWidget, DrawingArea, Renderer, plotters_backend};
 
 use crate::{message::Message, themes::AppTheme};
 
@@ -609,8 +607,8 @@ impl SensorChart {
         }
     }
 
-    fn process_event(&self, event: Event, bounds: Rectangle, cursor: Cursor) -> (event::Status, Option<Message>) {
-        let captured = match event {
+    fn process_event(&self, event: &Event, bounds: Rectangle, cursor: Cursor) -> (Status, Option<Message>) {
+        let captured = match *event {
             canvas::Event::Mouse(mouse::Event::CursorLeft) => self.clear_hover(),
             canvas::Event::Mouse(mouse::Event::CursorMoved { .. }) => cursor
                 .position_in(bounds)
@@ -621,14 +619,7 @@ impl SensorChart {
             _ => false,
         };
 
-        (
-            if captured {
-                event::Status::Captured
-            } else {
-                event::Status::Ignored
-            },
-            None,
-        )
+        (if captured { Status::Captured } else { Status::Ignored }, None)
     }
 }
 
@@ -638,10 +629,10 @@ impl Chart<Message> for SensorChart {
     fn update(
         &self,
         _state: &mut Self::State,
-        event: Event,
+        event: &Event,
         bounds: Rectangle,
         cursor: Cursor,
-    ) -> (event::Status, Option<Message>) {
+    ) -> (Status, Option<Message>) {
         self.process_event(event, bounds, cursor)
     }
 
