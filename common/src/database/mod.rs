@@ -118,7 +118,8 @@ impl Database {
         Ok(())
     }
 
-    pub fn select_last_n_events(&mut self, n: i64) -> Result<Vec<Event>, DatabaseError> {
+    pub fn select_last_n_records(&mut self, n: i64) -> Result<Vec<(SystemTime, SensorData)>, DatabaseError> {
+        let mut records = Vec::<(SystemTime, SensorData)>::new();
         let mut stmt = self
             .conn
             .prepare("SELECT id, timestamp FROM timestamp ORDER BY id DESC LIMIT ?1")?;
@@ -137,30 +138,30 @@ impl Database {
             .collect::<rusqlite::Result<Vec<_>>>()?;
 
         if timestamps.is_empty() {
-            return Ok(Vec::new());
+            return Ok(records);
         }
 
         let mut id_vec = Vec::new();
-        let mut events_map: HashMap<i64, Event> = HashMap::new();
+        let mut timestamps_map = HashMap::new();
 
         for timestamp in timestamps.iter() {
             id_vec.push(timestamp.0.to_string());
-            events_map.insert(timestamp.0, Event::new(timestamp.1, Vec::new()));
+            timestamps_map.insert(timestamp.0, timestamp.1);
         }
         let id_list = id_vec.join(",");
 
         if let Some(tables) = &self.tables {
             for table_name in tables {
                 let sensor_data_list = self.fetch_sensor_data(table_name, &id_list)?;
-                for (ts_id, data) in sensor_data_list {
-                    if let Some(event) = events_map.get_mut(&ts_id) {
-                        event.push_data(data);
+                for (ts_id, sensor_data) in sensor_data_list {
+                    if let Some(ts) = timestamps_map.get(&ts_id) {
+                        records.push((*ts, sensor_data));
                     }
                 }
             }
         }
 
-        Ok(events_map.into_values().collect())
+        Ok(records)
     }
 
     fn fetch_sensor_data(&self, table_name: &str, timestamp_ids: &str) -> rusqlite::Result<Vec<(i64, SensorData)>> {

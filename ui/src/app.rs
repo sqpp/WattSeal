@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
-use common::{CPUData, Database, DatabaseEntry, GPUData};
+use common::{CPUData, Database, DatabaseEntry, GPUData, SensorData};
 use iced::{
     Element, Subscription, Task, Theme,
     time::{Duration, every},
@@ -9,7 +9,7 @@ use iced::{
 };
 
 use crate::{
-    components::{chart::ChartData, header::Header},
+    components::header::Header,
     message::Message,
     pages::{Page, chart::ChartPage, info::InfoPage, optimization::OptimizationPage, settings::SettingsPage},
     themes::AppTheme,
@@ -68,17 +68,13 @@ impl App {
         }
     }
 
-    fn load_latest_chart_data(&mut self) -> ChartData {
-        let mut chart_data: ChartData = HashMap::new();
-        let res = self.database.select_last_n_events(1).unwrap_or_default();
-        for event in res {
-            let event_data: HashMap<String, (DateTime<Utc>, f32)> = event.into();
-            for (key, value) in event_data {
-                chart_data.insert(key, value);
-            }
-        }
-
-        chart_data
+    fn load_latest_chart_data(&mut self) -> Vec<(DateTime<Utc>, SensorData)> {
+        self.database
+            .select_last_n_records(1)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(ts, data)| (ts.into(), data))
+            .collect()
     }
 
     pub fn view(&self) -> Element<'_, Message> {
