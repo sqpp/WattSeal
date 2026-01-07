@@ -352,10 +352,9 @@ impl SensorChart {
         }
 
         let cutoff = max - self.limit;
-        self.data.series.retain(|_, series| {
+        for series in self.data.series.values_mut() {
             series.points.retain(|(time, _)| *time >= cutoff);
-            !series.points.is_empty()
-        });
+        }
 
         if self.dynamic_range {
             self.recalculate_range();
