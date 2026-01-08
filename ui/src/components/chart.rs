@@ -1,7 +1,6 @@
 use std::{
     cell::RefCell,
     collections::{HashMap, VecDeque},
-    fmt::format,
 };
 
 use chrono::{DateTime, Duration, TimeZone, Utc};
@@ -96,24 +95,22 @@ pub enum TooltipSide {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TooltipContent {
     pub title: String,
-    pub value: String,
-    pub timestamp: String,
+    pub value: f32,
+    pub time: DateTime<Utc>,
     pub description: Option<String>,
     pub series_index: usize,
+    pub axis_type: AxisType,
 }
 
 impl TooltipContent {
-    pub fn new(title: String, value: f32, time: DateTime<Utc>, series_index: usize, axis_type: &AxisType) -> Self {
-        let unit = match axis_type {
-            AxisType::Primary(_, u) => u,
-            AxisType::Secondary(_, u) => u,
-        };
+    pub fn new(title: String, value: f32, time: DateTime<Utc>, series_index: usize, axis_type: AxisType) -> Self {
         Self {
-            title: title,
-            value: format!("{:.1}{}", value, unit),
-            timestamp: time.format("%H:%M:%S").to_string(),
+            title,
+            value,
+            time,
             description: None,
             series_index,
+            axis_type,
         }
     }
 
@@ -122,28 +119,33 @@ impl TooltipContent {
         self
     }
 
-    pub fn calculate_height(&self) -> f32 {
-        let mut height = TOOLTIP_PADDING * 2.0;
-        height += TOOLTIP_LINE_HEIGHT;
-        height += TOOLTIP_LINE_HEIGHT;
-        height += TOOLTIP_LINE_HEIGHT;
-        if self.description.is_some() {
-            height += TOOLTIP_LINE_HEIGHT;
+    fn unit(&self) -> &str {
+        match &self.axis_type {
+            AxisType::Primary(_, unit) | AxisType::Secondary(_, unit) => unit,
         }
-        height.max(TOOLTIP_MIN_HEIGHT)
+    }
+
+    fn value_text(&self) -> String {
+        format!("{:.1}{}", self.value, self.unit())
+    }
+
+    fn timestamp_text(&self) -> String {
+        self.time.format("%H:%M:%S").to_string()
+    }
+
+    pub fn calculate_height(&self) -> f32 {
+        let lines = 3 + usize::from(self.description.is_some());
+        (TOOLTIP_PADDING * 2.0 + lines as f32 * TOOLTIP_LINE_HEIGHT).max(TOOLTIP_MIN_HEIGHT)
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TooltipData {
     pub content: TooltipContent,
-    pub time: DateTime<Utc>,
-    pub value: f32,
     pub point_x: f32,
     pub point_y: f32,
     pub side: TooltipSide,
     pub bounds: TooltipBounds,
-    pub axis_type: AxisType,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -169,16 +171,7 @@ impl TooltipBounds {
 }
 
 impl TooltipData {
-    pub fn new(
-        content: TooltipContent,
-        time: DateTime<Utc>,
-        value: f32,
-        point_x: f32,
-        point_y: f32,
-        chart_width: f32,
-        chart_height: f32,
-        axis_type: AxisType,
-    ) -> Self {
+    pub fn new(content: TooltipContent, point_x: f32, point_y: f32, chart_width: f32, chart_height: f32) -> Self {
         let tooltip_height = content.calculate_height();
 
         let space_right = chart_width - point_x - TOOLTIP_OFFSET;
@@ -214,13 +207,10 @@ impl TooltipData {
 
         Self {
             content,
-            time,
-            value,
             point_x,
             point_y,
             side,
             bounds,
-            axis_type,
         }
     }
 }
@@ -520,8 +510,8 @@ impl SensorChart {
 
         if let Some(tooltip) = self.hovered.borrow().as_ref() {
             let series_color = style.series_color(tooltip.content.series_index);
-            let point = (tooltip.time, tooltip.value);
-            let is_secondary = matches!(tooltip.axis_type, AxisType::Secondary(_, _));
+            let point = (tooltip.content.time, tooltip.content.value);
+            let is_secondary = matches!(tooltip.content.axis_type, AxisType::Secondary(_, _));
 
             macro_rules! draw {
                 ($series_expr:expr) => {
@@ -601,7 +591,7 @@ impl SensorChart {
         text_y += TOOLTIP_LINE_HEIGHT as i32;
 
         area.draw(&Text::new(
-            format!("Value: {}", content.value),
+            format!("Value: {}", content.value_text()),
             (text_x, text_y),
             text_style.clone(),
         ))
@@ -609,7 +599,7 @@ impl SensorChart {
         text_y += TOOLTIP_LINE_HEIGHT as i32;
 
         area.draw(&Text::new(
-            format!("Time: {}", content.timestamp),
+            format!("Time: {}", content.timestamp_text()),
             (text_x, text_y),
             text_style.clone(),
         ))
@@ -661,17 +651,8 @@ impl SensorChart {
                 let dist_sq = (px - chart_cursor.x).powi(2) + (py - chart_cursor.y).powi(2);
 
                 if dist_sq <= snap_sq {
-                    let content = TooltipContent::new(label, *value, *time, series_idx, &axis_type);
-                    let tooltip = TooltipData::new(
-                        content,
-                        *time,
-                        *value,
-                        px,
-                        py,
-                        chart_bounds.width,
-                        chart_bounds.height,
-                        axis_type,
-                    );
+                    let content = TooltipContent::new(label, *value, *time, series_idx, axis_type);
+                    let tooltip = TooltipData::new(content, px, py, chart_bounds.width, chart_bounds.height);
                     Some((tooltip, dist_sq))
                 } else {
                     None
