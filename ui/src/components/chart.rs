@@ -39,7 +39,7 @@ const CHART_MARGIN_RIGHT: f32 = 40.0;
 const TOOLTIP_WIDTH: f32 = 150.0;
 const TOOLTIP_MIN_HEIGHT: f32 = 60.0;
 const TOOLTIP_PADDING: f32 = 8.0;
-const TOOLTIP_OFFSET: f32 = 12.0;
+const TOOLTIP_OFFSET: f32 = 20.0;
 const TOOLTIP_CORNER_RADIUS: f32 = 4.0;
 const TOOLTIP_LINE_HEIGHT: f32 = 16.0;
 
@@ -170,8 +170,8 @@ impl TooltipData {
     pub fn new(content: TooltipContent, point_x: f32, point_y: f32, chart_width: f32, chart_height: f32) -> Self {
         let tooltip_height = content.calculate_height();
 
-        let space_right = chart_width - point_x - TOOLTIP_OFFSET;
-        let space_left = point_x - TOOLTIP_OFFSET;
+        let space_right = chart_width - point_x - TOOLTIP_OFFSET - CHART_MARGIN_LEFT;
+        let space_left = point_x - TOOLTIP_OFFSET - CHART_MARGIN_LEFT;
 
         let side = if space_right >= TOOLTIP_WIDTH {
             TooltipSide::Right
@@ -186,8 +186,8 @@ impl TooltipData {
         };
 
         let tooltip_x = match side {
-            TooltipSide::Right => point_x + TOOLTIP_OFFSET + CHART_MARGIN_LEFT - 10.0,
-            TooltipSide::Left => point_x - TOOLTIP_OFFSET - TOOLTIP_WIDTH + CHART_MARGIN_LEFT - 10.0,
+            TooltipSide::Right => point_x + TOOLTIP_OFFSET,
+            TooltipSide::Left => point_x - TOOLTIP_OFFSET - TOOLTIP_WIDTH,
         };
 
         let tooltip_y = (point_y - tooltip_height / 2.0)
@@ -519,7 +519,7 @@ impl SensorChart {
 
             annotation
                 .expect("failed to draw series")
-                .label(label)
+                .label(format!("{}   ", label))
                 .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], color.stroke_width(2)));
         }
 
@@ -636,12 +636,7 @@ impl SensorChart {
 
     fn hovered_point_at(&self, cursor: Point, bounds: Size, snap_distance: f32) -> Option<TooltipData> {
         let chart_bounds = Size::new(
-            bounds.width
-                - Y_LABEL_AREA_SIZE
-                - 2.0 * CHART_MARGIN
-                - CHART_MARGIN_LEFT
-                - CHART_MARGIN_RIGHT
-                - RIGHT_Y_LABEL_AREA_SIZE,
+            bounds.width - Y_LABEL_AREA_SIZE - 2.0 * CHART_MARGIN - CHART_MARGIN_LEFT - RIGHT_Y_LABEL_AREA_SIZE,
             bounds.height - X_LABEL_AREA_SIZE - 2.0 * CHART_MARGIN,
         );
 
