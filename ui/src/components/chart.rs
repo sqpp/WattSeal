@@ -737,7 +737,9 @@ impl SensorChart {
             _ => false,
         };
 
-        (if captured { Status::Captured } else { Status::Ignored }, None)
+        let status = if captured { Status::Captured } else { Status::Ignored };
+        let message = captured.then_some(Message::Redraw);
+        (status, message)
     }
 }
 
