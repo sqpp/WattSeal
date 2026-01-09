@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
-use common::Database;
+use common::{CPUData, Database, DatabaseEntry, GPUData, SensorData};
 use iced::{
     Element, Subscription, Task, Theme,
     time::{Duration, every},
@@ -9,7 +9,7 @@ use iced::{
 };
 
 use crate::{
-    components::{chart::ChartData, header::Header},
+    components::header::Header,
     message::Message,
     pages::{Page, chart::ChartPage, info::InfoPage, optimization::OptimizationPage, settings::SettingsPage},
     themes::AppTheme,
@@ -26,7 +26,6 @@ pub struct App {
     header: Header,
     theme: AppTheme,
     database: Database,
-    last_timestamp: Option<DateTime<Utc>>,
 }
 
 impl App {
@@ -46,7 +45,6 @@ impl App {
                 settings_page: SettingsPage::new(),
                 theme,
                 database,
-                last_timestamp: None,
             },
             task,
         )
@@ -70,18 +68,13 @@ impl App {
         }
     }
 
-    fn load_latest_chart_data(&mut self) -> ChartData {
-        let mut chart_data: ChartData = HashMap::new();
-        let now = Utc::now();
-        let res = self.database.select_last_n_events(1).unwrap();
-        println!("{:?}", res);
-
-        chart_data.insert("CPU Usage".into(), (now, rand::random::<f32>() * 100.0));
-        chart_data.insert("CPU Power".into(), (now, rand::random::<f32>() * 65.0));
-        chart_data.insert("GPU Usage".into(), (now, rand::random::<f32>() * 100.0));
-        chart_data.insert("GPU Power".into(), (now, rand::random::<f32>() * 75.0));
-
-        chart_data
+    fn load_latest_chart_data(&mut self) -> Vec<(DateTime<Utc>, SensorData)> {
+        self.database
+            .select_last_n_records(1)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(ts, data)| (ts.into(), data))
+            .collect()
     }
 
     pub fn view(&self) -> Element<'_, Message> {
