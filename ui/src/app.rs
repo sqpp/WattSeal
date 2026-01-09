@@ -11,7 +11,7 @@ use iced::{
 use crate::{
     components::header::Header,
     message::Message,
-    pages::{Page, chart::ChartPage, info::InfoPage, optimization::OptimizationPage, settings::SettingsPage},
+    pages::{Page, dashboard::ChartPage, info::InfoPage, optimization::OptimizationPage, settings::SettingsPage},
     themes::AppTheme,
 };
 
@@ -31,9 +31,9 @@ pub struct App {
 impl App {
     pub fn new() -> (Self, Task<Message>) {
         let theme = AppTheme::Dracula;
-        let (chart_page, task) = ChartPage::new(theme);
-        let current_page = Page::Chart;
+        let current_page = Page::Dashboard;
         let database = Database::new().unwrap();
+        let (chart_page, task) = ChartPage::new(theme);
 
         (
             Self {
@@ -52,8 +52,12 @@ impl App {
 
     pub fn update(&mut self, message: Message) {
         match message {
+            Message::LoadChartEvents(number) => {
+                let chart_data = self.load_latest_chart_data(number);
+                self.chart_page.update(Message::UpdateChartData(chart_data));
+            }
             Message::Tick => {
-                let chart_data = self.load_latest_chart_data();
+                let chart_data = self.load_latest_chart_data(1);
                 self.chart_page.update(Message::UpdateChartData(chart_data));
             }
             Message::NavigateTo(page) => {
@@ -68,9 +72,9 @@ impl App {
         }
     }
 
-    fn load_latest_chart_data(&mut self) -> Vec<(DateTime<Utc>, SensorData)> {
+    fn load_latest_chart_data(&mut self, number: i64) -> Vec<(DateTime<Utc>, SensorData)> {
         self.database
-            .select_last_n_records(1)
+            .select_last_n_records(number)
             .unwrap_or_default()
             .into_iter()
             .map(|(ts, data)| (ts.into(), data))
@@ -79,7 +83,7 @@ impl App {
 
     pub fn view(&self) -> Element<'_, Message> {
         let page_content = match self.current_page {
-            Page::Chart => self.chart_page.view(),
+            Page::Dashboard => self.chart_page.view(),
             Page::Info => self.info_page.view(),
             Page::Optimization => self.optimization_page.view(),
             Page::Settings => self.settings_page.view(),
