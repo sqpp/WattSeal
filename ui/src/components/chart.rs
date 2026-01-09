@@ -188,8 +188,8 @@ impl TooltipData {
         };
 
         let tooltip_x = match side {
-            TooltipSide::Right => point_x + TOOLTIP_OFFSET,
-            TooltipSide::Left => point_x - TOOLTIP_OFFSET - TOOLTIP_WIDTH,
+            TooltipSide::Right => point_x + TOOLTIP_OFFSET + CHART_MARGIN_LEFT - 10.0,
+            TooltipSide::Left => point_x - TOOLTIP_OFFSET - TOOLTIP_WIDTH + CHART_MARGIN_LEFT - 10.0,
         };
 
         let tooltip_y = (point_y - tooltip_height / 2.0)
@@ -456,7 +456,7 @@ impl SensorChart {
             .bold_line_style(style.grid_bold)
             .light_line_style(style.grid_light)
             .axis_style(ShapeStyle::from(style.axis).stroke_width(1))
-            .y_labels(10)
+            .y_labels(5)
             .y_label_style(label_style.clone())
             .y_label_formatter(&|y: &f32| format!("{}{}", y, self.y_axes.0.unit()))
             .y_desc(format!("{} ({})", self.y_axes.0.label(), self.y_axes.0.unit()))
