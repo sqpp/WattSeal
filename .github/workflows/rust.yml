@@ -13,6 +13,7 @@ jobs:
   rustfmt:
     name: Verify Code Formatting
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout sources
         uses: actions/checkout@v6
@@ -30,6 +31,7 @@ jobs:
   build:
     name: Build
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout sources
         uses: actions/checkout@v6
