@@ -11,7 +11,7 @@ use iced::{
 use crate::{
     components::header::Header,
     message::Message,
-    pages::{Page, chart::ChartPage, info::InfoPage, optimization::OptimizationPage, settings::SettingsPage},
+    pages::{Page, dashboard::ChartPage, info::InfoPage, optimization::OptimizationPage, settings::SettingsPage},
     themes::AppTheme,
 };
 
@@ -31,7 +31,7 @@ pub struct App {
 impl App {
     pub fn new() -> (Self, Task<Message>) {
         let theme = AppTheme::Dracula;
-        let current_page = Page::Chart;
+        let current_page = Page::Dashboard;
         let database = Database::new().unwrap();
         let (chart_page, task) = ChartPage::new(theme);
 
@@ -83,7 +83,7 @@ impl App {
 
     pub fn view(&self) -> Element<'_, Message> {
         let page_content = match self.current_page {
-            Page::Chart => self.chart_page.view(),
+            Page::Dashboard => self.chart_page.view(),
             Page::Info => self.info_page.view(),
             Page::Optimization => self.optimization_page.view(),
             Page::Settings => self.settings_page.view(),
