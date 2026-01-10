@@ -626,7 +626,6 @@ dependencies = [
  "memmap2",
  "nvml-wrapper",
  "sysinfo 0.37.2",
- "tray-icon",
  "win-kernel-driver",
  "win_ring0",
  "windows 0.57.0",
@@ -3289,6 +3288,7 @@ version = "0.1.0"
 dependencies = [
  "collector",
  "common",
+ "tray-icon",
  "ui",
 ]
 

@@ -11,3 +11,4 @@ members = ["collector", "ui", "common"]
 collector = { path = "collector" }
 ui = { path = "ui" }
 common = { path = "common" }
+tray-icon = "0.21.2"
