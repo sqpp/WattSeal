@@ -170,8 +170,8 @@ impl TooltipData {
     pub fn new(content: TooltipContent, point_x: f32, point_y: f32, chart_width: f32, chart_height: f32) -> Self {
         let tooltip_height = content.calculate_height();
 
-        let space_right = chart_width - point_x - TOOLTIP_OFFSET - CHART_MARGIN_LEFT;
-        let space_left = point_x - TOOLTIP_OFFSET - CHART_MARGIN_LEFT;
+        let space_right = chart_width - point_x - TOOLTIP_OFFSET;
+        let space_left = point_x - TOOLTIP_OFFSET;
 
         let side = if space_right >= TOOLTIP_WIDTH {
             TooltipSide::Right
@@ -632,6 +632,14 @@ impl SensorChart {
         if let Some(desc) = &content.description {
             area.draw(&Text::new(desc.clone(), (text_x, text_y), text_style)).ok();
         }
+
+        // draw tooltip data point
+        area.draw(&Circle::new(
+            (tooltip.point_x as i32, tooltip.point_y as i32),
+            5,
+            ShapeStyle::from(series_color).filled(),
+        ))
+        .ok();
     }
 
     fn hovered_point_at(&self, cursor: Point, bounds: Size, snap_distance: f32) -> Option<TooltipData> {
