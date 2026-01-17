@@ -75,6 +75,34 @@ pub enum SensorData {
     Peripherals(PeripheralsData),
 }
 
+impl SensorData {
+    pub fn sensor_type(&self) -> &'static str {
+        match self {
+            SensorData::CPU(_) => "CPU",
+            SensorData::GPU(_) => "GPU",
+            SensorData::Screen(_) => "Screen",
+            SensorData::Battery(_) => "Battery",
+            SensorData::Peripherals(_) => "Peripherals",
+        }
+    }
+
+    pub fn total_power_watts(&self) -> Option<f64> {
+        match self {
+            SensorData::CPU(data) => data.total_power_watts,
+            SensorData::GPU(data) => data.total_power_watts,
+            _ => None,
+        }
+    }
+
+    pub fn usage_percent(&self) -> Option<f64> {
+        match self {
+            SensorData::CPU(data) => Some(data.usage_percent),
+            SensorData::GPU(data) => data.usage_percent,
+            _ => None,
+        }
+    }
+}
+
 impl Display for SensorData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
