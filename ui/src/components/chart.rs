@@ -401,16 +401,16 @@ impl SensorChart {
     }
 
     fn recalculate_range(&mut self) {
-        let (min, max) = self
+        let max = self
             .data
             .series
             .values()
             .filter(|series| matches!(series.axis_type, AxisType::Primary(_, _)))
             .flat_map(|series| series.points.iter().map(|(_, v)| *v))
-            .fold((f32::MAX, f32::MIN), |(min, max), v| (min.min(v), max.max(v)));
+            .fold(f32::MIN, |max, v| max.max(v));
 
-        if min <= max {
-            self.y_ranges.0 = (min, max);
+        if max >= 0.0 {
+            self.y_ranges.0 = (0.0, max);
         }
     }
 
