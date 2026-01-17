@@ -1,32 +1,52 @@
 use chrono::{DateTime, Utc};
 use common::SensorData;
 use iced::{
-    Element, Font, Length, Task,
-    alignment::Alignment,
-    font,
+    Alignment, Color, Element, Length, Padding, Task,
+    alignment::{Horizontal, Vertical},
     time::Duration,
-    widget::{Column, Text},
+    widget::{Column, Container, Row, Text},
 };
 
 use crate::{
     components::chart::{AxisType, LineType, SensorChart},
     message::Message,
+    styles::{
+        container::ContainerStyle,
+        style_constants::{
+            FONT_BOLD, FONT_SIZE_BODY, FONT_SIZE_HUGE, FONT_SIZE_SUBTITLE, FONT_SIZE_TITLE, PADDING_LARGE,
+            SPACING_LARGE, SPACING_MEDIUM, SPACING_XLARGE,
+        },
+        text::TextStyle,
+    },
     themes::AppTheme,
 };
 
-const TITLE_FONT_SIZE: u32 = 22;
 const SAMPLE_EVERY: Duration = Duration::from_millis(1000);
-const TITLE_FONT: Font = Font {
-    family: font::Family::Name("Noto Sans"),
-    weight: font::Weight::Bold,
-    ..Font::DEFAULT
-};
 
-pub struct ChartPage {
-    chart: SensorChart,
+#[derive(Debug, Clone, Default)]
+pub struct PowerSnapshot {
+    pub total_power: f64,
+    pub detailed_power: Vec<SensorData>,
 }
 
-impl ChartPage {
+impl PowerSnapshot {
+    pub fn from_sensor_data(data: &[(DateTime<Utc>, SensorData)]) -> Self {
+        let mut readings = PowerSnapshot::default();
+
+        for (_, sensor) in data.iter() {
+            readings.total_power += sensor.total_power_watts().unwrap_or(0.0);
+            readings.detailed_power.push(sensor.clone());
+        }
+        readings
+    }
+}
+
+pub struct DashboardPage {
+    chart: SensorChart,
+    current_readings: PowerSnapshot,
+}
+
+impl DashboardPage {
     pub fn new(theme: AppTheme) -> (Self, Task<Message>) {
         let series = vec![
             (
@@ -56,7 +76,13 @@ impl ChartPage {
             AxisType::Secondary("Usage".to_string(), "%".to_string()),
         );
         let chart = SensorChart::new(series, None, None, theme, x_axis, y_axes);
-        (Self { chart }, Task::done(Message::LoadChartEvents(60)))
+        (
+            Self {
+                chart,
+                current_readings: PowerSnapshot::default(),
+            },
+            Task::none(),
+        )
     }
 
     pub fn update_theme(&mut self, theme: AppTheme) {
@@ -66,20 +92,168 @@ impl ChartPage {
     pub fn update(&mut self, message: Message) {
         match message {
             Message::UpdateChartData(data) => {
+                self.current_readings = PowerSnapshot::from_sensor_data(&data);
                 self.chart.push_data(data);
             }
             _ => {}
         }
     }
 
-    pub fn view(&self) -> Element<'_, Message> {
-        Column::new()
-            .spacing(20)
-            .align_x(Alignment::Start)
+    pub fn view(&self) -> Element<'_, Message, AppTheme> {
+        let content = Column::new()
+            .spacing(SPACING_XLARGE)
+            .padding(Padding::from(PADDING_LARGE))
             .width(Length::Fill)
             .height(Length::Fill)
-            .push(Text::new("Iced test chart").size(TITLE_FONT_SIZE).font(TITLE_FONT))
-            .push(self.chart.view(300.0))
+            .push(self.view_power_summary())
+            .push(self.view_component_cards())
+            .push(self.view_chart_section());
+
+        Container::new(content).width(Length::Fill).height(Length::Fill).into()
+    }
+
+    fn view_power_summary(&self) -> Element<'_, Message, AppTheme> {
+        let power_value = format!("{:.1}", self.current_readings.total_power);
+        let power_unit = "W";
+
+        let title = Text::new("Total Power Consumption")
+            .size(FONT_SIZE_SUBTITLE)
+            .font(FONT_BOLD)
+            .class(TextStyle::Subtitle);
+
+        let power_display = Row::new()
+            .align_y(Alignment::End)
+            .spacing(4)
+            .push(
+                Text::new(power_value)
+                    .size(FONT_SIZE_HUGE)
+                    .font(FONT_BOLD)
+                    .class(TextStyle::Primary),
+            )
+            .push(Text::new(power_unit).size(FONT_SIZE_TITLE).class(TextStyle::Muted));
+
+        let content = Column::new()
+            .spacing(SPACING_MEDIUM)
+            .align_x(Alignment::Center)
+            .push(title)
+            .push(power_display);
+
+        Container::new(content)
+            .width(Length::Fill)
+            .padding(Padding::from(PADDING_LARGE))
+            .align_x(Horizontal::Center)
+            .align_y(Vertical::Center)
+            .class(ContainerStyle::PowerCard)
+            .into()
+    }
+
+    fn view_component_cards(&self) -> Element<'_, Message, AppTheme> {
+        let mut column = Column::new().spacing(SPACING_LARGE).width(Length::Fill);
+        let mut row = Row::new().spacing(SPACING_LARGE).width(Length::Fill);
+
+        for (i, sensor) in self.current_readings.detailed_power.iter().enumerate() {
+            let card =
+                self.component_snapshot_card(sensor.sensor_type(), sensor.total_power_watts(), sensor.usage_percent());
+
+            row = row.push(card);
+
+            if i % 2 == 1 {
+                column = column.push(row);
+                row = Row::new().spacing(SPACING_LARGE).width(Length::Fill);
+            }
+        }
+
+        Container::new(column)
+            .width(Length::Fill)
+            .padding(Padding::from(PADDING_LARGE))
+            .class(ContainerStyle::Card)
+            .into()
+    }
+
+    fn component_snapshot_card(
+        &self,
+        name: &str,
+        power: Option<f64>,
+        usage: Option<f64>,
+    ) -> Element<'_, Message, AppTheme> {
+        let name_owned = name.to_string();
+        let power_text = power
+            .map(|p| format!("{:.1} W", p))
+            .unwrap_or_else(|| "N/A".to_string());
+
+        let usage_text = usage.map(|u| format!("{:.1}%", u)).unwrap_or_else(|| "N/A".to_string());
+
+        let title = Text::new(name_owned).size(FONT_SIZE_SUBTITLE).font(FONT_BOLD);
+
+        let power_style = if power.is_some() {
+            TextStyle::Primary
+        } else {
+            TextStyle::Muted
+        };
+
+        let usage_style = if usage.is_some() {
+            TextStyle::Success
+        } else {
+            TextStyle::Muted
+        };
+
+        let power_row = Row::new()
+            .spacing(SPACING_MEDIUM)
+            .align_y(Alignment::Center)
+            .push(Text::new("Power:").size(FONT_SIZE_BODY).class(TextStyle::Muted))
+            .push(
+                Text::new(power_text)
+                    .size(FONT_SIZE_BODY)
+                    .font(FONT_BOLD)
+                    .class(power_style),
+            );
+
+        let usage_row = Row::new()
+            .spacing(SPACING_MEDIUM)
+            .align_y(Alignment::Center)
+            .push(Text::new("Usage:").size(FONT_SIZE_BODY).class(TextStyle::Muted))
+            .push(
+                Text::new(usage_text)
+                    .size(FONT_SIZE_BODY)
+                    .font(FONT_BOLD)
+                    .class(usage_style),
+            );
+
+        let content = Column::new()
+            .spacing(SPACING_LARGE)
+            .push(title)
+            .push(power_row)
+            .push(usage_row);
+
+        Container::new(content)
+            .width(Length::Fill)
+            .padding(Padding::from(PADDING_LARGE))
+            .class(ContainerStyle::ComponentCard)
+            .into()
+    }
+
+    fn view_chart_section(&self) -> Element<'_, Message, AppTheme> {
+        let title = Text::new("Power History")
+            .size(FONT_SIZE_SUBTITLE)
+            .font(FONT_BOLD)
+            .class(TextStyle::Subtitle);
+
+        let chart_container = Container::new(self.chart.view(300.0))
+            .width(Length::Fill)
+            .height(Length::Fill);
+
+        let content = Column::new()
+            .spacing(SPACING_MEDIUM)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .push(title)
+            .push(chart_container);
+
+        Container::new(content)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .padding(Padding::from(PADDING_LARGE))
+            .class(ContainerStyle::Card)
             .into()
     }
 }
