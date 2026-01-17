@@ -6,6 +6,7 @@ pub mod app;
 pub mod components;
 pub mod message;
 pub mod pages;
+pub mod styles;
 pub mod themes;
 
 use app::App;

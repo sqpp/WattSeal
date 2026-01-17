@@ -1,6 +1,6 @@
 use iced::{Element, widget::Text};
 
-use crate::message::Message;
+use crate::{message::Message, themes::AppTheme};
 
 pub struct SettingsPage {}
 
@@ -17,7 +17,7 @@ impl SettingsPage {
         }
     }
 
-    pub fn view(&self) -> Element<'_, Message> {
+    pub fn view(&self) -> Element<'_, Message, AppTheme> {
         Text::new("Settings Page Content").into()
     }
 }

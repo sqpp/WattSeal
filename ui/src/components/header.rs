@@ -1,45 +1,67 @@
 use iced::{
-    Element, Font, Length,
-    alignment::Alignment,
-    font,
-    widget::{Container, Row, Text, button},
+    Alignment, Element, Length, Padding,
+    widget::{Button, Container, Row, Text, button},
 };
 
-use crate::{message::Message, pages::Page};
-
-const HEADER_FONT: Font = Font {
-    family: font::Family::Name("Noto Sans"),
-    weight: font::Weight::Bold,
-    ..Font::DEFAULT
+use crate::{
+    message::Message,
+    pages::Page,
+    styles::{
+        button::ButtonStyle,
+        container::ContainerStyle,
+        style_constants::{FONT_BOLD, FONT_SIZE_BODY, FONT_SIZE_HEADER, PADDING_LARGE, PADDING_MEDIUM},
+    },
+    themes::AppTheme,
 };
 
 pub struct Header {
-    title: String,
     nav_pages: Vec<Page>,
+    active_page: Page,
 }
 
 impl Header {
-    pub fn new(title: &str, nav_pages: Vec<Page>) -> Self {
-        Self {
-            title: title.into(),
-            nav_pages,
-        }
+    pub fn new(nav_pages: Vec<Page>, active_page: Page) -> Self {
+        Self { nav_pages, active_page }
     }
 
-    pub fn set_title(&mut self, title: &str) {
-        self.title = title.into();
+    pub fn change_page(&mut self, new_page: Page) {
+        self.active_page = new_page;
     }
 
-    pub fn view(&self) -> Element<'_, Message> {
-        let title = Container::new(Text::new(&self.title).size(24).font(HEADER_FONT)).width(Length::Fill);
+    pub fn view(&self) -> Element<'_, Message, AppTheme> {
+        let title = Container::new(
+            Text::new(self.active_page.to_string())
+                .size(FONT_SIZE_HEADER)
+                .font(FONT_BOLD),
+        )
+        .width(Length::Fill);
 
-        self.nav_pages
-            .iter()
-            .fold(Row::new().padding(10).spacing(20).push(title), |row, page| {
-                row.push(
-                    button(Text::new(page.to_string()).align_x(Alignment::End)).on_press(Message::NavigateTo(*page)),
-                )
-            })
+        let nav_buttons = self.nav_pages.iter().fold(Row::new().spacing(8), |row, page| {
+            let is_active = self.active_page == *page;
+            let button_style = if is_active {
+                ButtonStyle::NavActive
+            } else {
+                ButtonStyle::Nav
+            };
+
+            row.push(
+                button(Text::new(page.to_string()).size(FONT_SIZE_BODY))
+                    .padding(Padding::from([8.0, 16.0]))
+                    .class(button_style)
+                    .on_press(Message::NavigateTo(*page)),
+            )
+        });
+
+        let content = Row::new()
+            .padding(Padding::from([PADDING_MEDIUM, PADDING_LARGE]))
+            .spacing(20)
+            .align_y(Alignment::Center)
+            .push(title)
+            .push(nav_buttons);
+
+        Container::new(content)
+            .width(Length::Fill)
+            .class(ContainerStyle::Header)
             .into()
     }
 }

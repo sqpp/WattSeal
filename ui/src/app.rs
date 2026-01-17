@@ -3,15 +3,16 @@ use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 use common::{CPUData, Database, DatabaseEntry, GPUData, SensorData};
 use iced::{
-    Element, Subscription, Task, Theme,
+    Element, Subscription, Task,
     time::{Duration, every},
-    widget::{Column, pick_list},
+    widget::{Column, Container, pick_list},
 };
 
 use crate::{
     components::header::Header,
     message::Message,
-    pages::{Page, dashboard::ChartPage, info::InfoPage, optimization::OptimizationPage, settings::SettingsPage},
+    pages::{Page, dashboard::DashboardPage, info::InfoPage, optimization::OptimizationPage, settings::SettingsPage},
+    styles::container::ContainerStyle,
     themes::AppTheme,
 };
 
@@ -19,7 +20,7 @@ const FPS: u64 = 1;
 
 pub struct App {
     current_page: Page,
-    chart_page: ChartPage,
+    dashboard_page: DashboardPage,
     info_page: InfoPage,
     optimization_page: OptimizationPage,
     settings_page: SettingsPage,
@@ -33,13 +34,13 @@ impl App {
         let theme = AppTheme::Dracula;
         let current_page = Page::Dashboard;
         let database = Database::new().unwrap();
-        let (chart_page, task) = ChartPage::new(theme);
+        let (dashboard_page, task) = DashboardPage::new(theme);
 
         (
             Self {
                 current_page,
-                chart_page,
-                header: Header::new(&current_page.to_string(), Page::all()),
+                dashboard_page,
+                header: Header::new(Page::all(), current_page),
                 info_page: InfoPage::new(),
                 optimization_page: OptimizationPage::new(),
                 settings_page: SettingsPage::new(),
@@ -54,19 +55,19 @@ impl App {
         match message {
             Message::LoadChartEvents(number) => {
                 let chart_data = self.load_latest_chart_data(number);
-                self.chart_page.update(Message::UpdateChartData(chart_data));
+                self.dashboard_page.update(Message::UpdateChartData(chart_data));
             }
             Message::Tick => {
                 let chart_data = self.load_latest_chart_data(1);
-                self.chart_page.update(Message::UpdateChartData(chart_data));
+                self.dashboard_page.update(Message::UpdateChartData(chart_data));
             }
             Message::NavigateTo(page) => {
                 self.current_page = page;
-                self.header.set_title(&page.to_string());
+                self.header.change_page(page);
             }
             Message::ChangeTheme(theme) => {
                 self.theme = theme;
-                self.chart_page.update_theme(theme);
+                self.dashboard_page.update_theme(theme);
             }
             _ => {}
         }
@@ -81,18 +82,21 @@ impl App {
             .collect()
     }
 
-    pub fn view(&self) -> Element<'_, Message> {
+    pub fn view(&self) -> Element<'_, Message, AppTheme> {
         let page_content = match self.current_page {
-            Page::Dashboard => self.chart_page.view(),
+            Page::Dashboard => self.dashboard_page.view(),
             Page::Info => self.info_page.view(),
             Page::Optimization => self.optimization_page.view(),
             Page::Settings => self.settings_page.view(),
         };
 
+        let theme_picker =
+            Container::new(pick_list(AppTheme::all(), Some(self.theme), Message::ChangeTheme)).padding(10);
+
         Column::new()
             .push(self.header.view())
             .push(page_content)
-            .push(pick_list(AppTheme::all(), Some(self.theme), Message::ChangeTheme))
+            .push(theme_picker)
             .into()
     }
 
@@ -100,7 +104,7 @@ impl App {
         every(Duration::from_millis(1000 / FPS)).map(|_| Message::Tick)
     }
 
-    pub fn theme(&self) -> Theme {
-        self.theme.to_iced_theme()
+    pub fn theme(&self) -> AppTheme {
+        self.theme
     }
 }
