@@ -1,5 +1,7 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
-use common::SensorData;
+use common::{CPUData, DatabaseEntry, SensorData, TotalData};
 use iced::{
     Alignment, Color, Element, Length, Padding, Task,
     alignment::{Horizontal, Vertical},
@@ -25,19 +27,51 @@ const SAMPLE_EVERY: Duration = Duration::from_millis(1000);
 
 #[derive(Debug, Clone, Default)]
 pub struct PowerSnapshot {
-    pub total_power: f64,
-    pub detailed_power: Vec<SensorData>,
+    pub components_power: HashMap<String, Option<SensorData>>,
 }
 
 impl PowerSnapshot {
-    pub fn from_sensor_data(data: &[(DateTime<Utc>, SensorData)]) -> Self {
+    pub fn from_components_list(components: &Vec<String>) -> Self {
         let mut readings = PowerSnapshot::default();
 
-        for (_, sensor) in data.iter() {
-            readings.total_power += sensor.total_power_watts().unwrap_or(0.0);
-            readings.detailed_power.push(sensor.clone());
+        for component in components.iter() {
+            let sensor_data =
+                SensorData::get_matching_sensor_data(component).unwrap_or(SensorData::Total(TotalData::default()));
+            readings
+                .components_power
+                .insert(sensor_data.sensor_type().to_string(), Some(sensor_data));
         }
         readings
+    }
+
+    pub fn update_from_sensor_data(&mut self, data: &[(DateTime<Utc>, SensorData)]) {
+        for (_, sensor) in data.iter() {
+            self.components_power
+                .insert(sensor.sensor_type().to_string(), Some(sensor.clone()));
+        }
+    }
+
+    pub fn total_power(&self) -> f64 {
+        match self.components_power.get(TotalData::generic_name()) {
+            Some(Some(SensorData::Total(p))) => p.total_power_watts,
+            _ => 0.0,
+        }
+    }
+
+    pub fn power_details(&self) -> Vec<(&String, &Option<SensorData>)> {
+        let mut details: Vec<(&String, &Option<SensorData>)> = self
+            .components_power
+            .iter()
+            .filter(|(_, data)| {
+                if let Some(SensorData::Total(_)) = data {
+                    false
+                } else {
+                    true
+                }
+            })
+            .collect();
+        details.sort_by(|a, b| a.0.cmp(b.0));
+        details
     }
 }
 
@@ -47,7 +81,7 @@ pub struct DashboardPage {
 }
 
 impl DashboardPage {
-    pub fn new(theme: AppTheme) -> (Self, Task<Message>) {
+    pub fn new(theme: AppTheme, components: Vec<String>) -> (Self, Task<Message>) {
         let series = vec![
             (
                 "CPU Power".to_string(),
@@ -79,7 +113,7 @@ impl DashboardPage {
         (
             Self {
                 chart,
-                current_readings: PowerSnapshot::default(),
+                current_readings: PowerSnapshot::from_components_list(&components),
             },
             Task::none(),
         )
@@ -92,7 +126,7 @@ impl DashboardPage {
     pub fn update(&mut self, message: Message) {
         match message {
             Message::UpdateChartData(data) => {
-                self.current_readings = PowerSnapshot::from_sensor_data(&data);
+                self.current_readings.update_from_sensor_data(&data);
                 self.chart.push_data(data);
             }
             _ => {}
@@ -113,7 +147,7 @@ impl DashboardPage {
     }
 
     fn view_power_summary(&self) -> Element<'_, Message, AppTheme> {
-        let power_value = format!("{:.1}", self.current_readings.total_power);
+        let power_value = format!("{:.1}", self.current_readings.total_power());
         let power_unit = "W";
 
         let title = Text::new("Total Power Consumption")
@@ -150,17 +184,25 @@ impl DashboardPage {
     fn view_component_cards(&self) -> Element<'_, Message, AppTheme> {
         let mut column = Column::new().spacing(SPACING_LARGE).width(Length::Fill);
         let mut row = Row::new().spacing(SPACING_LARGE).width(Length::Fill);
+        let mut items_in_row = 0;
 
-        for (i, sensor) in self.current_readings.detailed_power.iter().enumerate() {
-            let card =
-                self.component_snapshot_card(sensor.sensor_type(), sensor.total_power_watts(), sensor.usage_percent());
+        for (i, sensor) in self.current_readings.power_details().iter().enumerate() {
+            let power = sensor.1.as_ref().and_then(|data| data.total_power_watts());
+            let usage = sensor.1.as_ref().and_then(|data| data.usage_percent());
+            let card = self.component_snapshot_card(sensor.0, power, usage);
 
             row = row.push(card);
+            items_in_row += 1;
 
             if i % 2 == 1 {
                 column = column.push(row);
                 row = Row::new().spacing(SPACING_LARGE).width(Length::Fill);
+                items_in_row = 0;
             }
+        }
+
+        if items_in_row > 0 {
+            column = column.push(row);
         }
 
         Container::new(column)

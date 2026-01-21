@@ -34,7 +34,8 @@ impl App {
         let theme = AppTheme::Dracula;
         let current_page = Page::Dashboard;
         let database = Database::new().unwrap();
-        let (dashboard_page, task) = DashboardPage::new(theme);
+        let materials = database.get_tables();
+        let (dashboard_page, task) = DashboardPage::new(theme, materials);
 
         (
             Self {
