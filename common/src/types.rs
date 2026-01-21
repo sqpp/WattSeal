@@ -1,5 +1,7 @@
 use std::{collections::HashMap, fmt::Display, time::SystemTime};
 
+use crate::DatabaseEntry;
+
 #[derive(Debug, Clone)]
 pub struct Event {
     time: SystemTime,
@@ -24,7 +26,7 @@ impl Event {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct CPUData {
     pub total_power_watts: Option<f64>,
     pub pp0_power_watts: Option<f64>,
@@ -33,14 +35,14 @@ pub struct CPUData {
     pub usage_percent: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct GPUData {
     pub total_power_watts: Option<f64>,
     pub usage_percent: Option<f64>,
     pub vram_usage_percent: Option<f64>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ScreenData {
     pub resolution: (u32, u32),
     pub refresh_rate_hz: u32,
@@ -48,7 +50,7 @@ pub struct ScreenData {
     pub luminosity_nits: u32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct BatteryData {
     pub manufacturer: String,
     pub model: String,
@@ -58,7 +60,7 @@ pub struct BatteryData {
     pub cycle_count: u32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct PeripheralsData {
     pub device_name: String,
     pub device_type: String,
@@ -73,9 +75,27 @@ pub enum SensorData {
     Screen(ScreenData),
     Battery(BatteryData),
     Peripherals(PeripheralsData),
+    Total(TotalData),
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct TotalData {
+    pub total_power_watts: f64,
 }
 
 impl SensorData {
+    pub fn get_matching_sensor_data(table_name: &str) -> Option<SensorData> {
+        match table_name {
+            s if s == CPUData::table_name_static() => Some(SensorData::CPU(CPUData::default())),
+            s if s == GPUData::table_name_static() => Some(SensorData::GPU(GPUData::default())),
+            // s if s == ScreenData::table_name_static() => Some(SensorData::Screen(ScreenData::default())),
+            // s if s == BatteryData::table_name_static() => Some(SensorData::Battery(BatteryData::default())),
+            // s if s == PeripheralsData::table_name_static() => Some(SensorData::Peripherals(PeripheralsData::default())),
+            s if s == TotalData::table_name_static() => Some(SensorData::Total(TotalData::default())),
+            _ => None,
+        }
+    }
+
     pub fn sensor_type(&self) -> &'static str {
         match self {
             SensorData::CPU(_) => "CPU",
@@ -83,6 +103,7 @@ impl SensorData {
             SensorData::Screen(_) => "Screen",
             SensorData::Battery(_) => "Battery",
             SensorData::Peripherals(_) => "Peripherals",
+            SensorData::Total(_) => "Total",
         }
     }
 
@@ -90,6 +111,7 @@ impl SensorData {
         match self {
             SensorData::CPU(data) => data.total_power_watts,
             SensorData::GPU(data) => data.total_power_watts,
+            SensorData::Total(power) => Some(power.total_power_watts),
             _ => None,
         }
     }
@@ -123,6 +145,7 @@ impl Display for SensorData {
             SensorData::Screen(data) => write!(f, "Screen Data: {:?}", data),
             SensorData::Battery(data) => write!(f, "Battery Data: {:?}", data),
             SensorData::Peripherals(data) => write!(f, "Peripherals Data: {:?}", data),
+            SensorData::Total(power) => write!(f, "Total Power: {:.3} W", power.total_power_watts),
         }
     }
 }
@@ -154,5 +177,11 @@ impl From<BatteryData> for SensorData {
 impl From<PeripheralsData> for SensorData {
     fn from(data: PeripheralsData) -> Self {
         SensorData::Peripherals(data)
+    }
+}
+
+impl From<TotalData> for SensorData {
+    fn from(data: TotalData) -> Self {
+        SensorData::Total(data)
     }
 }

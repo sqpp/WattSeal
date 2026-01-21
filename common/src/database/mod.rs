@@ -6,7 +6,7 @@ use std::{collections::HashMap, time::SystemTime};
 pub use entries::DatabaseEntry;
 use rusqlite::{Connection, OptionalExtension, Row, ToSql, Transaction, params};
 
-use crate::types::{CPUData, Event, GPUData, SensorData};
+use crate::types::{CPUData, Event, GPUData, SensorData, TotalData};
 
 pub static DATABASE_PATH: &str = "power_monitoring.db";
 
@@ -85,18 +85,28 @@ impl Database {
             [],
         )?;
 
-        let mut table_names = Vec::new();
-
+        let mut table_names = self.tables.clone().unwrap_or_default();
+        let mut has_changed = false;
         for table in tables {
             let name = table.table_name();
-            let create_table_sql = format!("CREATE TABLE IF NOT EXISTS {} ({});", name, table.columns().join(", "));
-            tx.execute(&create_table_sql, [])?;
-            table_names.push(name.to_string());
+            if !table_names.contains(&name.to_string()) {
+                let create_table_sql = format!("CREATE TABLE IF NOT EXISTS {} ({});", name, table.columns().join(", "));
+                tx.execute(&create_table_sql, [])?;
+                table_names.push(name.to_string());
+                has_changed = true;
+            }
+        }
+        if !has_changed {
+            return Ok(());
         }
         Self::insert_hardware_info(&tx, SystemTime::now(), &table_names.join(","))?;
         self.tables = Some(table_names);
         tx.commit()?;
         Ok(())
+    }
+
+    pub fn get_tables(&self) -> Vec<String> {
+        self.tables.clone().unwrap_or_default()
     }
 
     pub fn insert_hardware_info(
@@ -178,6 +188,8 @@ impl Database {
             self.query_table::<CPUData>(table_name, timestamp_ids)
         } else if table_name == GPUData::table_name_static() {
             self.query_table::<GPUData>(table_name, timestamp_ids)
+        } else if table_name == TotalData::table_name_static() {
+            self.query_table::<TotalData>(table_name, timestamp_ids)
         } else {
             Ok(Vec::new())
         }

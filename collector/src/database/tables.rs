@@ -2,7 +2,7 @@ use std::time;
 
 use common::DatabaseTable;
 
-use super::{CPUData, DatabaseEntry, GPUData};
+use super::{CPUData, DatabaseEntry, GPUData, TotalData};
 use crate::sensors::{CPUSensor, GPUSensor, SensorType};
 
 impl DatabaseTable for SensorType {
@@ -10,6 +10,7 @@ impl DatabaseTable for SensorType {
         match self {
             SensorType::CPU(s) => s.table_name(),
             SensorType::GPU(s) => s.table_name(),
+            SensorType::Total => TotalData::table_name_static(),
         }
     }
 
@@ -17,6 +18,13 @@ impl DatabaseTable for SensorType {
         match self {
             SensorType::CPU(s) => s.columns(),
             SensorType::GPU(s) => s.columns(),
+            SensorType::Total => {
+                let mut cols = timestamp_columns();
+                for (name, type_) in TotalData::columns_static() {
+                    cols.push(format!("{} {}", name, type_));
+                }
+                cols
+            }
         }
     }
 }

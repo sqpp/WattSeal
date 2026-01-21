@@ -70,6 +70,9 @@ impl CollectorApp {
             }
         }
 
+        // Add total power sensor
+        self.sensors.push(SensorType::Total);
+
         println!("\n========== SETTING UP DATABASE ==========");
         // Initialize database
         let mut database = Database::new().map_err(|e| format!("Failed to open database: {}", e))?;
