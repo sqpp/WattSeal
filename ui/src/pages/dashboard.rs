@@ -93,23 +93,21 @@ impl DashboardPage {
                 LineType::Line,
                 AxisType::Primary("GPU Power".to_string(), "W".to_string()),
             ),
-            (
-                "CPU Usage".to_string(),
-                LineType::Dashed,
-                AxisType::Secondary("CPU Usage".to_string(), "%".to_string()),
-            ),
-            (
-                "GPU Usage".to_string(),
-                LineType::Dashed,
-                AxisType::Secondary("GPU Usage".to_string(), "%".to_string()),
-            ),
+            // (
+            //     "CPU Usage".to_string(),
+            //     LineType::Dashed,
+            //     AxisType::Secondary("CPU Usage".to_string(), "%".to_string()),
+            // ),
+            // (
+            //     "GPU Usage".to_string(),
+            //     LineType::Dashed,
+            //     AxisType::Secondary("GPU Usage".to_string(), "%".to_string()),
+            // ),
         ];
         let x_axis = AxisType::Primary("Time".to_string(), "s".to_string());
-        let y_axes = (
-            AxisType::Primary("Power".to_string(), "W".to_string()),
-            AxisType::Secondary("Usage".to_string(), "%".to_string()),
-        );
-        let chart = SensorChart::new(series, None, None, theme, x_axis, y_axes);
+        let y_axis = AxisType::Primary("Power".to_string(), "W".to_string());
+        // AxisType::Secondary("Usage".to_string(), "%".to_string()),
+        let chart = SensorChart::new(series, None, None, theme, x_axis, y_axis);
         (
             Self {
                 chart,
@@ -127,7 +125,19 @@ impl DashboardPage {
         match message {
             Message::UpdateChartData(data) => {
                 self.current_readings.update_from_sensor_data(&data);
-                self.chart.push_data(data);
+                let labeled_data: Vec<(String, DateTime<Utc>, f32)> = data
+                    .iter()
+                    .filter_map(|(timestamp, sensor)| match sensor {
+                        SensorData::CPU(cpu_data) => cpu_data
+                            .total_power_watts
+                            .map(|power| ("CPU Power".to_string(), *timestamp, power as f32)),
+                        SensorData::GPU(gpu_data) => gpu_data
+                            .total_power_watts
+                            .map(|power| ("GPU Power".to_string(), *timestamp, power as f32)),
+                        _ => None,
+                    })
+                    .collect();
+                self.chart.push_data(labeled_data);
             }
             _ => {}
         }

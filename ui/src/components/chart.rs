@@ -31,7 +31,7 @@ const VALUE_MIN: f32 = 0.0;
 const VALUE_MAX: f32 = 100.0;
 const X_LABEL_AREA_SIZE: f32 = 50.0;
 const Y_LABEL_AREA_SIZE: f32 = 80.0;
-const RIGHT_Y_LABEL_AREA_SIZE: f32 = 90.0;
+// const RIGHT_Y_LABEL_AREA_SIZE: f32 = 90.0;
 const CHART_MARGIN: f32 = 20.0;
 const CHART_MARGIN_LEFT: f32 = 40.0;
 const CHART_MARGIN_RIGHT: f32 = 40.0;
@@ -216,9 +216,9 @@ pub struct SensorChart {
     data: ChartData,
     limit: Duration,
     hovered: RefCell<Option<TooltipData>>,
-    y_ranges: (Range, Range),
+    y_range: Range,
     x_axis: AxisType,
-    y_axes: (AxisType, AxisType),
+    y_axis: AxisType,
     dynamic_range: bool,
     style: ChartStyle,
 }
@@ -236,19 +236,19 @@ pub enum LineType {
 #[derive(Debug, Clone, PartialEq)]
 pub enum AxisType {
     Primary(String, String),
-    Secondary(String, String),
+    // Secondary(String, String),
 }
 
 impl AxisType {
     pub fn label(&self) -> &str {
         match self {
-            AxisType::Primary(label, _) | AxisType::Secondary(label, _) => label,
+            AxisType::Primary(label, _) => label,
         }
     }
 
     pub fn unit(&self) -> &str {
         match self {
-            AxisType::Primary(_, unit) | AxisType::Secondary(_, unit) => unit,
+            AxisType::Primary(_, unit) => unit,
         }
     }
 }
@@ -334,21 +334,18 @@ impl SensorChart {
         max_y: Option<f32>,
         theme: AppTheme,
         x_axis: AxisType,
-        y_axes: (AxisType, AxisType),
+        y_axis: AxisType,
     ) -> Self {
         Self {
             cache: RefCell::default(),
             data: ChartData::from(series),
             limit: Duration::seconds(PLOT_SECONDS as i64),
             hovered: RefCell::default(),
-            y_ranges: (
-                (min_y.unwrap_or(VALUE_MIN), max_y.unwrap_or(VALUE_MAX)),
-                (VALUE_MIN, VALUE_MAX),
-            ),
+            y_range: (min_y.unwrap_or(VALUE_MIN), max_y.unwrap_or(VALUE_MAX)),
             dynamic_range: min_y.is_none() || max_y.is_none(),
             style: theme.into(),
             x_axis,
-            y_axes,
+            y_axis,
         }
     }
 
@@ -357,35 +354,18 @@ impl SensorChart {
         self.cache.borrow_mut().clear();
     }
 
-    pub fn push_data(&mut self, data: Vec<(DateTime<Utc>, SensorData)>) {
+    pub fn push_data(&mut self, data: Vec<(String, DateTime<Utc>, f32)>) {
         if data.is_empty() {
             return;
         }
 
         let mut max = Utc.timestamp_opt(0, 0).unwrap();
-        for (time, value) in data {
+        for (label, time, value) in data {
             if time > max {
                 max = time;
             }
 
-            match value {
-                SensorData::CPU(cpu_data) => {
-                    if let Some(power) = cpu_data.total_power_watts {
-                        self.data.push_data(time, "CPU Power".to_string(), power as f32);
-                    }
-                    self.data
-                        .push_data(time, "CPU Usage".to_string(), cpu_data.usage_percent as f32);
-                }
-                SensorData::GPU(gpu_data) => {
-                    if let Some(power) = gpu_data.total_power_watts {
-                        self.data.push_data(time, "GPU Power".to_string(), power as f32);
-                    }
-                    if let Some(usage) = gpu_data.usage_percent {
-                        self.data.push_data(time, "GPU Usage".to_string(), usage as f32);
-                    }
-                }
-                _ => {}
-            }
+            self.data.push_data(time, label, value);
         }
 
         let cutoff = max - self.limit;
@@ -410,7 +390,7 @@ impl SensorChart {
             .fold(f32::MIN, |max, v| max.max(v));
 
         if max >= 0.0 {
-            self.y_ranges.0 = (0.0, max);
+            self.y_range = (0.0, max);
         }
     }
 
@@ -440,13 +420,11 @@ impl SensorChart {
         let mut chart = builder
             .x_label_area_size(X_LABEL_AREA_SIZE)
             .y_label_area_size(Y_LABEL_AREA_SIZE)
-            .right_y_label_area_size(RIGHT_Y_LABEL_AREA_SIZE)
             .margin(CHART_MARGIN)
             .margin_left(CHART_MARGIN_LEFT)
             .margin_right(CHART_MARGIN_RIGHT)
-            .build_cartesian_2d(oldest_time..newest_time, self.y_ranges.0.0..self.y_ranges.0.1)
-            .expect("failed to build chart")
-            .set_secondary_coord(oldest_time..newest_time, self.y_ranges.1.0..self.y_ranges.1.1);
+            .build_cartesian_2d(oldest_time..newest_time, self.y_range.0..self.y_range.1)
+            .expect("failed to build chart");
 
         chart
             .configure_mesh()
@@ -455,8 +433,8 @@ impl SensorChart {
             .axis_style(ShapeStyle::from(style.axis).stroke_width(1))
             .y_labels(5)
             .y_label_style(label_style.clone())
-            .y_label_formatter(&|y: &f32| format!("{}{}", y, self.y_axes.0.unit()))
-            .y_desc(format!("{} ({})", self.y_axes.0.label(), self.y_axes.0.unit()))
+            .y_label_formatter(&|y: &f32| format!("{}{}", y, self.y_axis.unit()))
+            .y_desc(format!("{} ({})", self.y_axis.label(), self.y_axis.unit()))
             .axis_desc_style(label_style.clone().transform(FontTransform::Rotate90))
             .x_label_style(label_style.clone())
             .x_labels(60)
@@ -468,43 +446,24 @@ impl SensorChart {
             .draw()
             .expect("failed to draw chart mesh");
 
-        chart
-            .configure_secondary_axes()
-            .axis_style(ShapeStyle::from(style.axis).stroke_width(1))
-            .y_labels(10)
-            .y_label_formatter(&|y: &f32| format!("{}{}", y, self.y_axes.1.unit()))
-            .y_desc(format!("{} ({})", self.y_axes.1.label(), self.y_axes.1.unit()))
-            .axis_desc_style(label_style.clone().transform(FontTransform::Rotate90))
-            .label_style(label_style.clone())
-            .draw()
-            .expect("failed to draw secondary axes");
-
         for (i, (label, series)) in self.data.series.iter().enumerate() {
             let color = style.series_color(i);
             let data: Vec<_> = series.iter().collect();
-            let is_secondary = matches!(series.axis_type, AxisType::Secondary(_, _));
 
-            macro_rules! draw {
-                ($series_expr:expr) => {
-                    if is_secondary {
-                        chart.draw_secondary_series($series_expr)
-                    } else {
-                        chart.draw_series($series_expr)
-                    }
-                };
-            }
             let annotation = match series.line_type {
-                LineType::Line => draw!(LineSeries::new(data, color.stroke_width(2))),
-                LineType::Area => draw!(
-                    AreaSeries::new(data, 0.0, color.mix(0.2)).border_style(ShapeStyle::from(color).stroke_width(2))
+                LineType::Line => chart.draw_series(LineSeries::new(data, color.stroke_width(2))),
+                LineType::Area => chart.draw_series(
+                    AreaSeries::new(data, 0.0, color.mix(0.2)).border_style(ShapeStyle::from(color).stroke_width(2)),
                 ),
-                LineType::Dotted => draw!(DottedLineSeries::new(data, 5, 10, move |(x, y)| {
+                LineType::Dotted => chart.draw_series(DottedLineSeries::new(data, 5, 10, move |(x, y)| {
                     Circle::new((x, y), 3, color.filled())
                 })),
-                LineType::Points => draw!(PointSeries::of_element(data, 5, &color, &|coord, size, style| {
-                    EmptyElement::at(coord) + Circle::new((0, 0), size, style.filled())
-                })),
-                LineType::Dashed => draw!(DashedLineSeries::new(
+                LineType::Points => {
+                    chart.draw_series(PointSeries::of_element(data, 5, &color, &|coord, size, style| {
+                        EmptyElement::at(coord) + Circle::new((0, 0), size, style.filled())
+                    }))
+                }
+                LineType::Dashed => chart.draw_series(DashedLineSeries::new(
                     data,
                     5,
                     10,
@@ -533,28 +492,18 @@ impl SensorChart {
         if let Some(tooltip) = self.hovered.borrow().as_ref() {
             let series_color = style.series_color(tooltip.content.series_index);
             let point = (tooltip.content.time, tooltip.content.value);
-            let is_secondary = matches!(tooltip.content.axis_type, AxisType::Secondary(_, _));
-
-            macro_rules! draw {
-                ($series_expr:expr) => {
-                    if is_secondary {
-                        chart.draw_secondary_series($series_expr)
-                    } else {
-                        chart.draw_series($series_expr)
-                    }
-                };
-            }
-            draw!(PointSeries::of_element(
-                vec![point],
-                6,
-                ShapeStyle::from(series_color).filled(),
-                &|coord, size, st| {
-                    EmptyElement::at(coord)
-                        + Circle::new((0, 0), size + 3, ShapeStyle::from(style.text).stroke_width(2))
-                        + Circle::new((0, 0), size, st.clone())
-                },
-            ))
-            .expect("failed to draw hover marker");
+            chart
+                .draw_series(PointSeries::of_element(
+                    vec![point],
+                    6,
+                    ShapeStyle::from(series_color).filled(),
+                    &|coord, size, st| {
+                        EmptyElement::at(coord)
+                            + Circle::new((0, 0), size + 3, ShapeStyle::from(style.text).stroke_width(2))
+                            + Circle::new((0, 0), size, st.clone())
+                    },
+                ))
+                .expect("failed to draw hover marker");
 
             let backend_area = chart.plotting_area().strip_coord_spec();
             self.draw_tooltip_on_backend(&backend_area, tooltip, style);
@@ -635,7 +584,7 @@ impl SensorChart {
 
     fn hovered_point_at(&self, cursor: Point, bounds: Size, snap_distance: f32) -> Option<TooltipData> {
         let chart_bounds = Size::new(
-            bounds.width - Y_LABEL_AREA_SIZE - 2.0 * CHART_MARGIN - CHART_MARGIN_LEFT - RIGHT_Y_LABEL_AREA_SIZE,
+            bounds.width - Y_LABEL_AREA_SIZE - 2.0 * CHART_MARGIN - CHART_MARGIN_LEFT,
             bounds.height - X_LABEL_AREA_SIZE - 2.0 * CHART_MARGIN,
         );
 
@@ -664,7 +613,7 @@ impl SensorChart {
             })
             .filter_map(|(series_idx, label, (time, value), axis_type)| {
                 let px = self.point_x_for_time(*time, oldest, total_ms, chart_bounds.width);
-                let py = self.point_y_for_value(*value, chart_bounds.height, &axis_type);
+                let py = self.point_y_for_value(*value, chart_bounds.height);
                 let dist_sq = (px - chart_cursor.x).powi(2) + (py - chart_cursor.y).powi(2);
 
                 if dist_sq <= snap_sq {
@@ -679,11 +628,8 @@ impl SensorChart {
             .map(|(tooltip, _)| tooltip)
     }
 
-    fn point_y_for_value(&self, value: f32, height: f32, axis_type: &AxisType) -> f32 {
-        let (min, max) = match axis_type {
-            AxisType::Primary(_, _) => self.y_ranges.0,
-            AxisType::Secondary(_, _) => self.y_ranges.1,
-        };
+    fn point_y_for_value(&self, value: f32, height: f32) -> f32 {
+        let (min, max) = self.y_range;
 
         let range = max - min;
         if height <= 0.0 || range <= f32::EPSILON {
