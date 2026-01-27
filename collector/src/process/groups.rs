@@ -1,19 +1,10 @@
 use std::collections::HashMap;
 
 use super::AppPowerData;
-
-/// Represents grouped application data
-#[derive(Debug, Clone)]
-pub struct GroupedAppData {
-    pub app_name: String,
-    pub power_watts: f64,
-    pub cpu_usage_percent: f64,
-    pub vram_usage_mb: f64,
-    pub process_count: usize,
-}
+use common::ProcessData;
 
 /// Group processes by application name and calculate power consumption
-pub fn group_processes_by_app(processes: Vec<AppPowerData>, total_cpu_power_watts: f64) -> Vec<GroupedAppData> {
+pub fn group_processes_by_app(processes: Vec<AppPowerData>, total_cpu_power_watts: f64) -> Vec<ProcessData> {
     let mut grouped: HashMap<String, (f64, f64, usize)> = HashMap::new();
     let mut total_cpu_percent = 0.0;
 
@@ -32,7 +23,7 @@ pub fn group_processes_by_app(processes: Vec<AppPowerData>, total_cpu_power_watt
     }
 
     // Convert to power consumption
-    let mut results: Vec<GroupedAppData> = grouped
+    let mut results: Vec<ProcessData> = grouped
         .into_iter()
         .map(|(app_name, (cpu_percent, vram_mb, count))| {
             let power_watts = if total_cpu_percent > 0.0 {
@@ -41,17 +32,16 @@ pub fn group_processes_by_app(processes: Vec<AppPowerData>, total_cpu_power_watt
                 0.0
             };
 
-            GroupedAppData {
+            ProcessData {
                 app_name,
-                power_watts,
-                cpu_usage_percent: cpu_percent,
-                vram_usage_mb: vram_mb, // Use per-app VRAM
-                process_count: count,
+                vram_usage: vram_mb,
+                cpu_usage_watts: power_watts,
+                subprocess_count: count,
             }
         })
         .collect();
 
-    results.sort_by(|a, b| b.cpu_usage_percent.partial_cmp(&a.cpu_usage_percent).unwrap());
+    results.sort_by(|a, b| b.cpu_usage_watts.partial_cmp(&a.cpu_usage_watts).unwrap());
     results
 }
 

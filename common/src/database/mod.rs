@@ -6,7 +6,7 @@ use std::{collections::HashMap, time::SystemTime};
 pub use entries::DatabaseEntry;
 use rusqlite::{Connection, OptionalExtension, Row, ToSql, Transaction, params};
 
-use crate::types::{CPUData, Event, GPUData, SensorData, TotalData};
+use crate::types::{CPUData, Event, GPUData, ProcessData, SensorData, TotalData};
 
 pub static DATABASE_PATH: &str = "power_monitoring.db";
 

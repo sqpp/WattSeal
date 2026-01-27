@@ -69,6 +69,14 @@ pub struct PeripheralsData {
 }
 
 #[derive(Debug, Clone)]
+pub struct ProcessData {
+    pub app_name: String,
+    pub vram_usage: f64,
+    pub cpu_usage_watts: f64,
+    pub subprocess_count: usize,
+}
+
+#[derive(Debug, Clone)]
 pub enum SensorData {
     CPU(CPUData),
     GPU(GPUData),
@@ -76,6 +84,7 @@ pub enum SensorData {
     Battery(BatteryData),
     Peripherals(PeripheralsData),
     Total(TotalData),
+    Process(Vec<ProcessData>),
 }
 
 #[derive(Debug, Clone, Default)]
@@ -104,6 +113,7 @@ impl SensorData {
             SensorData::Battery(_) => "Battery",
             SensorData::Peripherals(_) => "Peripherals",
             SensorData::Total(_) => "Total",
+            SensorData::Process(_) => "Processes",
         }
     }
 
@@ -146,7 +156,21 @@ impl Display for SensorData {
             SensorData::Battery(data) => write!(f, "Battery Data: {:?}", data),
             SensorData::Peripherals(data) => write!(f, "Peripherals Data: {:?}", data),
             SensorData::Total(power) => write!(f, "Total Power: {:.3} W", power.total_power_watts),
+            SensorData::Process(processes) => {
+                writeln!(f, "Processes:")?;
+                for process in processes {
+                    writeln!(f, "{}", process)?;
+                }
+                Ok(())
+            }
         }
+    }
+}
+
+impl Display for ProcessData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "App: {} | VRAM: {:.2}MB | Power(CPU): {:.3}W | Nb: {}", self.app_name, self.vram_usage, self.cpu_usage_watts, self.subprocess_count)?;
+        Ok(())
     }
 }
 

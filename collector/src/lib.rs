@@ -35,8 +35,8 @@ impl CollectorApp {
             Ok(info) => info,
             Err(e) => return Err(format!("Failed to query hardware information: {}", e)),
         };
-        println!("✓ Hardware information loaded");
-        println!("{:#?}", hw_info);
+        // println!("✓ Hardware information loaded");
+        // println!("{:#?}", hw_info);
 
         // Initialize display information
         let display_infos = DisplayInfo::all().unwrap();
@@ -86,52 +86,28 @@ impl CollectorApp {
     }
 
     pub fn run(&mut self) {
-        println!("\n========== PROCESS MONITORING TEST ==========\n");
+        println!("\n========== POWER CONSUMPTION MONITORING ==========");
+        println!("Logging data to database every second. Press Ctrl+C to stop.\n");
 
+        let mut iteration = 0;
         loop {
-            println!("\nFetching process data...\n");
+            thread::sleep(Duration::from_millis(1000));
+            iteration += 1;
 
-            // Get raw process data
-            let processes = estimate_app_power_consumption();
+            println!("\n--- Iteration {} ---", iteration);
 
-            // Group processes by application (no need for total_cpu_power for testing)
-            let grouped_apps = group_processes_by_app(processes, 0.0);
-
-            println!(
-                "{:<30} {:<15} {:<15} {:<10}",
-                "Application", "CPU Usage (%)", "VRAM (MB)", "Processes"
-            );
-            println!("{}", "-".repeat(75));
-
-            // Print top 10 grouped applications by CPU usage
-            for app in grouped_apps.iter().take(10) {
-                if app.cpu_usage_percent > 0.001 {
-                    println!(
-                        "{:<30} {:<15.2} {:<15.2} {:<10}",
-                        app.app_name, app.cpu_usage_percent, app.vram_usage_mb, app.process_count
-                    );
-                }
+            let event = create_event_from_sensors(&self.sensors);
+            
+            match self.database.insert_event(&event) {
+                Ok(_) => println!("✓ Event data saved to database"),
+                Err(e) => eprintln!("✗ Failed to save event data: {:?}", e),
             }
 
-            thread::sleep(Duration::from_secs(1));
+            // PRINT DATA
+            for sensor_data in event.data().iter() {
+                println!("{}", sensor_data);
+            }
         }
-
-        // println!("\n========== POWER CONSUMPTION MONITORING ==========");
-        // println!("Logging data to database every second. Press Ctrl+C to stop.\n");
-
-        // let mut iteration = 0;
-        // loop {
-        //     thread::sleep(Duration::from_millis(1000));
-        //     iteration += 1;
-
-        //     println!("\n--- Iteration {} ---", iteration);
-
-        //     let event = create_event_from_sensors(&self.sensors);
-        //     match self.database.insert_event(&event) {
-        //         Ok(_) => println!("✓ Event data saved to database"),
-        //         Err(e) => eprintln!("✗ Failed to save event data: {:?}", e),
-        //     }
-        // }
     }
 }
 
