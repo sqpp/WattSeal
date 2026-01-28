@@ -4,7 +4,7 @@ use std::{
     rc::Rc,
 };
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Timelike, Utc};
 use common::{CPUData, DatabaseEntry, SensorData, TotalData};
 use iced::{
     Alignment, Color, Element, Length, Padding, Task,
@@ -102,6 +102,12 @@ impl<'a> ComponentState<'a> {
     }
 
     fn push_data(&mut self, timestamp: DateTime<Utc>, data: &SensorData) {
+        let timestamp = if timestamp.nanosecond() >= 500_000_000 {
+            timestamp.with_nanosecond(0).unwrap_or(timestamp) + chrono::Duration::seconds(1)
+        } else {
+            timestamp.with_nanosecond(0).unwrap_or(timestamp)
+        };
+
         self.latest_reading = Some(data.clone());
 
         let power = data.total_power_watts();
