@@ -118,17 +118,43 @@ impl<'a> ComponentState<'a> {
         }
 
         let cutoff = timestamp - chrono::Duration::seconds(self.time_range.clone() as i64);
-        if let Ok(mut history) = self.usage_history.try_borrow_mut() {
-            while let Some(&(ts, _)) = history.front() {
-                if ts < cutoff {
-                    history.pop_front();
-                } else {
-                    break;
+
+        let prune_history = |history: &Rc<RefCell<VecDeque<(DateTime<Utc>, f32)>>>| {
+            if let Ok(mut h) = history.try_borrow_mut() {
+                while let Some(&(ts, _)) = h.front() {
+                    if ts < cutoff {
+                        h.pop_front();
+                    } else {
+                        break;
+                    }
                 }
             }
-        }
+        };
+
+        prune_history(&self.power_history);
+        prune_history(&self.usage_history);
 
         self.chart.refresh_cache();
+    }
+
+    fn prune_history(&mut self) {
+        let now = Utc::now();
+        let cutoff = now - chrono::Duration::seconds(self.time_range.clone() as i64);
+
+        let prune_history = |history: &Rc<RefCell<VecDeque<(DateTime<Utc>, f32)>>>| {
+            if let Ok(mut h) = history.try_borrow_mut() {
+                while let Some(&(ts, _)) = h.front() {
+                    if ts < cutoff {
+                        h.pop_front();
+                    } else {
+                        break;
+                    }
+                }
+            }
+        };
+
+        prune_history(&self.power_history);
+        prune_history(&self.usage_history);
     }
 
     fn update_time_range(&mut self, time_range: TimeRange) {
