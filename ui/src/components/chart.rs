@@ -366,13 +366,13 @@ impl<'a> SensorChart<'a> {
         }
     }
 
-    pub fn view(&self) -> Element<'_, Message, AppTheme> {
+    pub fn view(&self, height: f32) -> Element<'_, Message, AppTheme> {
         Column::new()
             .width(Length::Fill)
             .height(Length::Shrink)
             .spacing(5)
             .align_x(Alignment::Center)
-            .push(ChartWidget::new(self).height(Length::Fill))
+            .push(ChartWidget::new(self).height(Length::Fixed(height)))
             .into()
     }
 

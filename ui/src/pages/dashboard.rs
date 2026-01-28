@@ -10,7 +10,7 @@ use iced::{
     Alignment, Color, Element, Length, Padding, Task,
     alignment::{Horizontal, Vertical},
     time::Duration,
-    widget::{Column, Container, Row, Text},
+    widget::{Column, Container, Row, Scrollable, Text},
 };
 
 use crate::{
@@ -21,6 +21,7 @@ use crate::{
     message::Message,
     styles::{
         container::ContainerStyle,
+        scrollable::ScrollableStyle,
         style_constants::{
             FONT_BOLD, FONT_SIZE_BODY, FONT_SIZE_HUGE, FONT_SIZE_SUBTITLE, FONT_SIZE_TITLE, PADDING_LARGE,
             SPACING_LARGE, SPACING_MEDIUM, SPACING_XLARGE,
@@ -167,13 +168,13 @@ impl<'a> ComponentState<'a> {
         self.chart.update_style(theme);
     }
 
-    fn chart_card<'b>(&'b self, title: &'b str) -> Element<'b, Message, AppTheme> {
+    fn chart_card<'b>(&'b self, title: &'b str, height: f32) -> Element<'b, Message, AppTheme> {
         let title = Text::new(title)
             .size(FONT_SIZE_SUBTITLE)
             .font(FONT_BOLD)
             .class(TextStyle::Subtitle);
 
-        let chart_container = Container::new(self.chart.view())
+        let chart_container = Container::new(self.chart.view(height))
             .width(Length::Fill)
             .height(Length::Fill);
 
@@ -191,151 +192,11 @@ impl<'a> ComponentState<'a> {
             .class(ContainerStyle::Card)
             .into()
     }
-}
 
-pub struct DashboardPage<'a> {
-    components: HashMap<String, ComponentState<'a>>,
-}
-
-impl<'a> DashboardPage<'a> {
-    pub fn new(theme: AppTheme, components: Vec<String>) -> (Self, Task<Message>) {
-        let components = components
-            .into_iter()
-            .map(|name| {
-                let sensor_type = SensorData::get_matching_sensor_data(name.as_str())
-                    .map(|data| data.sensor_type().to_string())
-                    .unwrap_or(name.clone());
-                (sensor_type.clone(), ComponentState::new(name, sensor_type, theme))
-            })
-            .collect();
-        (Self { components }, Task::none())
-    }
-
-    pub fn update_theme(&mut self, theme: AppTheme) {
-        for component in self.components.values_mut() {
-            component.update_theme(theme);
-        }
-    }
-
-    pub fn update(&mut self, message: Message) {
-        match message {
-            Message::UpdateChartData(data) => {
-                for (timestamp, sensor) in data.iter() {
-                    if let Some(component) = self.components.get_mut(sensor.sensor_type()) {
-                        component.push_data(*timestamp, sensor);
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-
-    pub fn view(&self) -> Element<'_, Message, AppTheme> {
-        let chart_card = self
-            .components
-            .get("Total")
-            .map(|c| c.chart_card("Total Power Over Time"))
-            .unwrap_or_else(|| {
-                Text::new("No data available")
-                    .size(FONT_SIZE_BODY)
-                    .class(TextStyle::Muted)
-                    .into()
-            });
-        let content = Column::new()
-            .spacing(SPACING_XLARGE)
-            .padding(Padding::from(PADDING_LARGE))
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .push(self.view_power_summary())
-            .push(self.view_component_cards())
-            .push(chart_card);
-
-        Container::new(content).width(Length::Fill).height(Length::Fill).into()
-    }
-
-    fn view_power_summary(&self) -> Element<'_, Message, AppTheme> {
-        let power_value = format!(
-            "{:.1}",
-            self.components
-                .get("Total")
-                .and_then(|c| c.latest_reading.as_ref())
-                .and_then(|data| data.total_power_watts())
-                .unwrap_or(0.0)
-        );
-        let power_unit = "W";
-
-        let title = Text::new("Total Power Consumption")
-            .size(FONT_SIZE_SUBTITLE)
-            .font(FONT_BOLD)
-            .class(TextStyle::Subtitle);
-
-        let power_display = Row::new()
-            .align_y(Alignment::End)
-            .spacing(4)
-            .push(
-                Text::new(power_value)
-                    .size(FONT_SIZE_HUGE)
-                    .font(FONT_BOLD)
-                    .class(TextStyle::Primary),
-            )
-            .push(Text::new(power_unit).size(FONT_SIZE_TITLE).class(TextStyle::Muted));
-
-        let content = Column::new()
-            .spacing(SPACING_MEDIUM)
-            .align_x(Alignment::Center)
-            .push(title)
-            .push(power_display);
-
-        Container::new(content)
-            .width(Length::Fill)
-            .padding(Padding::from(PADDING_LARGE))
-            .align_x(Horizontal::Center)
-            .align_y(Vertical::Center)
-            .class(ContainerStyle::PowerCard)
-            .into()
-    }
-
-    fn view_component_cards(&self) -> Element<'_, Message, AppTheme> {
-        let mut column = Column::new().spacing(SPACING_LARGE).width(Length::Fill);
-        let mut row = Row::new().spacing(SPACING_LARGE).width(Length::Fill);
-        let mut items_in_row = 0;
-
-        for (i, (name, component)) in self.components.iter().filter(|(name, _)| *name != "Total").enumerate() {
-            let power = component
-                .latest_reading
-                .as_ref()
-                .and_then(|data| data.total_power_watts());
-            let usage = component.latest_reading.as_ref().and_then(|data| data.usage_percent());
-            let card = self.component_snapshot_card(name, power, usage);
-
-            row = row.push(card);
-            items_in_row += 1;
-
-            if i % 2 == 1 {
-                column = column.push(row);
-                row = Row::new().spacing(SPACING_LARGE).width(Length::Fill);
-                items_in_row = 0;
-            }
-        }
-
-        if items_in_row > 0 {
-            column = column.push(row);
-        }
-
-        Container::new(column)
-            .width(Length::Fill)
-            .padding(Padding::from(PADDING_LARGE))
-            .class(ContainerStyle::Card)
-            .into()
-    }
-
-    fn component_snapshot_card(
-        &self,
-        name: &str,
-        power: Option<f64>,
-        usage: Option<f64>,
-    ) -> Element<'_, Message, AppTheme> {
-        let name_owned = name.to_string();
+    fn component_snapshot_card(&self) -> Element<'_, Message, AppTheme> {
+        let name_owned = &self.sensor_type;
+        let power = self.latest_reading.as_ref().and_then(|data| data.total_power_watts());
+        let usage = self.latest_reading.as_ref().and_then(|data| data.usage_percent());
         let power_text = power
             .map(|p| format!("{:.1} W", p))
             .unwrap_or_else(|| "N/A".to_string());
@@ -390,32 +251,149 @@ impl<'a> DashboardPage<'a> {
             .class(ContainerStyle::ComponentCard)
             .into()
     }
+}
 
-    fn chart_card<'b>(&'b self, title: &'b str) -> Element<'b, Message, AppTheme> {
-        let title = Text::new(title)
+pub struct DashboardPage<'a> {
+    components: HashMap<String, ComponentState<'a>>,
+}
+
+impl<'a> DashboardPage<'a> {
+    pub fn new(theme: AppTheme, components: Vec<String>) -> (Self, Task<Message>) {
+        let components = components
+            .into_iter()
+            .map(|name| {
+                let sensor_type = SensorData::get_matching_sensor_data(name.as_str())
+                    .map(|data| data.sensor_type().to_string())
+                    .unwrap_or(name.clone());
+                (sensor_type.clone(), ComponentState::new(name, sensor_type, theme))
+            })
+            .collect();
+        (Self { components }, Task::none())
+    }
+
+    pub fn update_theme(&mut self, theme: AppTheme) {
+        for component in self.components.values_mut() {
+            component.update_theme(theme);
+        }
+    }
+
+    pub fn update(&mut self, message: Message) {
+        match message {
+            Message::UpdateChartData(data) => {
+                for (timestamp, sensor) in data.iter() {
+                    if let Some(component) = self.components.get_mut(sensor.sensor_type()) {
+                        component.push_data(*timestamp, sensor);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    pub fn view(&self) -> Element<'_, Message, AppTheme> {
+        let chart_card = self
+            .components
+            .get("Total")
+            .map(|c| c.chart_card("Total Power Over Time", 300.0))
+            .unwrap_or_else(|| {
+                Text::new("No data available")
+                    .size(FONT_SIZE_BODY)
+                    .class(TextStyle::Muted)
+                    .into()
+            });
+
+        let content = Column::new()
+            .spacing(SPACING_XLARGE)
+            .padding(Padding::from(PADDING_LARGE))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .push(self.view_power_summary());
+
+        let additional_content = Column::new()
+            .spacing(SPACING_XLARGE)
+            .padding(Padding::from(PADDING_LARGE))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .push(chart_card)
+            .push(self.view_component_cards());
+
+        // Container::new(content).width(Length::Fill).height(Length::Fill).into()
+        content
+            .push(
+                Scrollable::new(additional_content)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .class(ScrollableStyle::Standard),
+            )
+            .into()
+    }
+
+    fn view_power_summary(&self) -> Element<'_, Message, AppTheme> {
+        let power_value = format!(
+            "{:.1}",
+            self.components
+                .get("Total")
+                .and_then(|c| c.latest_reading.as_ref())
+                .and_then(|data| data.total_power_watts())
+                .unwrap_or(0.0)
+        );
+        let power_unit = "W";
+
+        let title = Text::new("Total Power Consumption")
             .size(FONT_SIZE_SUBTITLE)
             .font(FONT_BOLD)
             .class(TextStyle::Subtitle);
 
-        let chart = self.components.get("Total").map(|c| c.chart.view()).unwrap_or_else(|| {
-            Text::new("No data available")
-                .size(FONT_SIZE_BODY)
-                .class(TextStyle::Muted)
-                .into()
-        });
-
-        let chart_container = Container::new(chart).width(Length::Fill).height(Length::Fill);
+        let power_display = Row::new()
+            .align_y(Alignment::End)
+            .spacing(4)
+            .push(
+                Text::new(power_value)
+                    .size(FONT_SIZE_HUGE)
+                    .font(FONT_BOLD)
+                    .class(TextStyle::Primary),
+            )
+            .push(Text::new(power_unit).size(FONT_SIZE_TITLE).class(TextStyle::Muted));
 
         let content = Column::new()
             .spacing(SPACING_MEDIUM)
-            .width(Length::Fill)
-            .height(Length::Fill)
+            .align_x(Alignment::Center)
             .push(title)
-            .push(chart_container);
+            .push(power_display);
 
         Container::new(content)
             .width(Length::Fill)
-            .height(Length::Fill)
+            .padding(Padding::from(PADDING_LARGE))
+            .align_x(Horizontal::Center)
+            .align_y(Vertical::Center)
+            .class(ContainerStyle::PowerCard)
+            .into()
+    }
+
+    fn view_component_cards(&self) -> Element<'_, Message, AppTheme> {
+        let mut column = Column::new().spacing(SPACING_LARGE).width(Length::Fill);
+        let mut row = Row::new().spacing(SPACING_LARGE).width(Length::Fill);
+        let mut items_in_row = 0;
+
+        for (i, (_, component)) in self.components.iter().filter(|(name, _)| *name != "Total").enumerate() {
+            let card = component.component_snapshot_card();
+
+            row = row.push(card);
+            items_in_row += 1;
+
+            if i % 2 == 1 {
+                column = column.push(row);
+                row = Row::new().spacing(SPACING_LARGE).width(Length::Fill);
+                items_in_row = 0;
+            }
+        }
+
+        if items_in_row > 0 {
+            column = column.push(row);
+        }
+
+        Container::new(column)
+            .width(Length::Fill)
             .padding(Padding::from(PADDING_LARGE))
             .class(ContainerStyle::Card)
             .into()
