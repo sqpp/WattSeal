@@ -1,16 +1,22 @@
 use std::{
     cell::RefCell,
     collections::{BTreeMap, VecDeque},
+    fmt::Display,
     rc::Rc,
 };
 
 use chrono::{DateTime, Timelike, Utc};
 use common::{CPUData, DatabaseEntry, SensorData, TotalData};
 use iced::{
-    Alignment, Color, Element, Length, Padding, Task,
+    Alignment, Color, Element, Length, Padding, Renderer, Task, Theme,
+    advanced::graphics::text::cosmic_text::skrifa::raw::tables::aat::class,
     alignment::{Horizontal, Vertical},
     time::Duration,
-    widget::{Column, Container, Row, Scrollable, Text},
+    widget::{
+        Column, Container, PickList, Row, Scrollable, Text,
+        button::{self, Button},
+        pick_list,
+    },
 };
 
 use crate::{
@@ -20,7 +26,9 @@ use crate::{
     },
     message::Message,
     styles::{
+        button::ButtonStyle,
         container::ContainerStyle,
+        picklist::PickListStyle,
         scrollable::ScrollableStyle,
         style_constants::{
             FONT_BOLD, FONT_SIZE_BODY, FONT_SIZE_HUGE, FONT_SIZE_SUBTITLE, FONT_SIZE_TITLE, PADDING_LARGE,
@@ -38,6 +46,15 @@ pub enum MetricType {
     #[default]
     Power,
     Usage,
+}
+
+impl Display for MetricType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MetricType::Power => write!(f, "Power"),
+            MetricType::Usage => write!(f, "Usage"),
+        }
+    }
 }
 
 impl MetricType {
@@ -60,12 +77,22 @@ impl MetricType {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, PartialEq, Debug)]
 pub enum TimeRange {
     #[default]
     LastMinute = 60,
     LastHour = 3600,
     Last24Hours = 86400,
+}
+
+impl Display for TimeRange {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TimeRange::LastMinute => write!(f, "Last Minute"),
+            TimeRange::LastHour => write!(f, "Last Hour"),
+            TimeRange::Last24Hours => write!(f, "Last 24 Hours"),
+        }
+    }
 }
 
 pub struct ComponentState<'a> {
@@ -204,7 +231,30 @@ impl<'a> ComponentState<'a> {
         let title = Text::new(title)
             .size(FONT_SIZE_SUBTITLE)
             .font(FONT_BOLD)
-            .class(TextStyle::Subtitle);
+            .class(TextStyle::Subtitle)
+            .width(Length::Fill);
+
+        let time_range_selector: PickList<'_, _, _, _, _, AppTheme, Renderer> = pick_list(
+            [TimeRange::LastMinute, TimeRange::LastHour, TimeRange::Last24Hours],
+            Some(self.time_range.clone()),
+            |tr| Message::ChangeChartTimeRange(self.name.clone(), tr),
+        );
+
+        let metric_type_button: Button<'_, _, AppTheme, Renderer> = iced::widget::button(
+            Text::new(match self.metric_type {
+                MetricType::Power => MetricType::Usage.to_string(),
+                MetricType::Usage => MetricType::Power.to_string(),
+            })
+            .size(FONT_SIZE_BODY),
+        )
+        .on_press(Message::ChangeChartMetricType(self.name.clone()));
+
+        let first_row = Row::new()
+            .spacing(SPACING_XLARGE)
+            .align_y(Alignment::Center)
+            .push(title)
+            .push(time_range_selector)
+            .push(metric_type_button);
 
         let chart_container = Container::new(self.chart.view(height))
             .width(Length::Fill)
@@ -214,7 +264,7 @@ impl<'a> ComponentState<'a> {
             .spacing(SPACING_MEDIUM)
             .width(Length::Fill)
             .height(Length::Fill)
-            .push(title)
+            .push(first_row)
             .push(chart_container);
 
         Container::new(content)
@@ -225,7 +275,7 @@ impl<'a> ComponentState<'a> {
             .into()
     }
 
-    fn component_snapshot_card(&self) -> Element<'_, Message, AppTheme> {
+    fn snapshot_card(&self) -> Element<'_, Message, AppTheme> {
         let name_owned = &self.sensor_type;
         let power = self.latest_reading.as_ref().and_then(|data| data.total_power_watts());
         let usage = self.latest_reading.as_ref().and_then(|data| data.usage_percent());
@@ -408,7 +458,7 @@ impl<'a> DashboardPage<'a> {
         let mut items_in_row = 0;
 
         for (i, (_, component)) in self.components.iter().filter(|(name, _)| *name != "Total").enumerate() {
-            let card = component.component_snapshot_card();
+            let card = component.snapshot_card();
 
             row = row.push(card);
             items_in_row += 1;
