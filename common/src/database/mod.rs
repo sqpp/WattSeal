@@ -181,7 +181,11 @@ impl Database {
 
         if let Some(tables) = &self.tables {
             for table_name in tables {
-                let sensor_data_list = self.fetch_sensor_data(table_name, &id_list)?;
+                let query = format!(
+                    "SELECT timestamp_id, * FROM {} WHERE timestamp_id IN ({})",
+                    table_name, id_list
+                );
+                let sensor_data_list = self.execute_sensor_query(table_name, &query, [])?;
                 for (ts_id, sensor_data) in sensor_data_list {
                     if let Some(ts) = timestamps_map.get(&ts_id) {
                         records.push((*ts, sensor_data));
@@ -189,41 +193,39 @@ impl Database {
                 }
             }
         }
-
         Ok(records)
     }
 
-    fn fetch_sensor_data(&self, table_name: &str, timestamp_ids: &str) -> rusqlite::Result<Vec<(i64, SensorData)>> {
+    pub fn execute_sensor_query<P>(
+        &self,
+        table_name: &str,
+        query: &str,
+        params: P,
+    ) -> rusqlite::Result<Vec<(i64, SensorData)>>
+    where
+        P: rusqlite::Params,
+    {
         if table_name == CPUData::table_name_static() {
-            self.query_table::<CPUData>(table_name, timestamp_ids)
+            self.query_sensor_table::<CPUData, P>(query, params)
         } else if table_name == GPUData::table_name_static() {
-            self.query_table::<GPUData>(table_name, timestamp_ids)
+            self.query_sensor_table::<GPUData, P>(query, params)
         } else if table_name == TotalData::table_name_static() {
-            self.query_table::<TotalData>(table_name, timestamp_ids)
+            self.query_sensor_table::<TotalData, P>(query, params)
         } else {
             Ok(Vec::new())
         }
     }
 
-    fn query_table<T>(&self, table_name: &str, timestamp_ids: &str) -> rusqlite::Result<Vec<(i64, SensorData)>>
+    fn query_sensor_table<T, P>(&self, query: &str, params: P) -> rusqlite::Result<Vec<(i64, SensorData)>>
     where
         T: DatabaseEntry + Into<SensorData>,
+        P: rusqlite::Params,
     {
-        let cols = T::columns_static()
-            .iter()
-            .map(|(name, _)| *name)
-            .collect::<Vec<_>>()
-            .join(", ");
-        let query = format!(
-            "SELECT timestamp_id, {} FROM {} WHERE timestamp_id IN ({})",
-            cols, table_name, timestamp_ids
-        );
-        let mut stmt = self.conn.prepare(&query)?;
-
-        let rows = stmt.query_map([], |row| {
-            let ts_id: i64 = row.get(0)?;
+        let mut stmt = self.conn.prepare(query)?;
+        let rows = stmt.query_map(params, |row| {
+            let ts_id_or_millis: i64 = row.get(0)?;
             let data = T::from_row(row)?;
-            Ok((ts_id, data.into()))
+            Ok((ts_id_or_millis, data.into()))
         })?;
 
         rows.collect()
