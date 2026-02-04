@@ -319,6 +319,12 @@ impl<'a> SensorChart<'a> {
         );
     }
 
+    pub fn set_all_line_types(&mut self, line_type: LineType) {
+        for series in self.data.values_mut() {
+            series.line_type = line_type;
+        }
+    }
+
     pub fn remove_series(&mut self, label: &str) {
         self.data.remove(label);
     }
@@ -340,13 +346,11 @@ impl<'a> SensorChart<'a> {
     pub fn set_x_axis_label_and_unit(&mut self, label: &'a str, unit: &'a str) {
         self.x_axis_label = label;
         self.x_unit = unit;
-        self.cache.borrow_mut().clear();
     }
 
     pub fn set_y_axis_label_and_unit(&mut self, label: &'a str, unit: &'a str) {
         self.y_axis_label = label;
         self.y_unit = unit;
-        self.cache.borrow_mut().clear();
     }
 
     pub fn newest_time(&self) -> Option<DateTime<Utc>> {
