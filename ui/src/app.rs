@@ -85,8 +85,11 @@ impl<'a> App<'a> {
 
     fn gpu_is_integrated(chart_data: &mut Vec<(DateTime<Utc>, SensorData)>) {
         // Check the CPU pp1_power value
-        let pp1_value = chart_data.iter().find_map(|(_, sensor_data)| {
+        let pp1_value = chart_data.iter_mut().find_map(|(_, sensor_data)| {
             if let SensorData::CPU(cpu_data) = sensor_data {
+                if let Some(total_power) = cpu_data.total_power_watts {
+                    cpu_data.total_power_watts = Some(total_power - cpu_data.pp1_power_watts.unwrap_or(0.0));
+                }
                 cpu_data.pp1_power_watts
             } else {
                 None

@@ -168,16 +168,11 @@ impl MSRReader {
             duration,
         );
 
-        let mut pkg_value = self.calculate_component_power(
+        let pkg_value = self.calculate_component_power(
             current_energy.cpu_energy_values.pkg,
             last_energy.cpu_energy_values.pkg,
             duration,
         );
-
-        // GPU is integrated in CPU
-        if !pp1_value.is_none() && !pkg_value.is_none() {
-            pkg_value = pkg_value.map(|p| p - pp1_value.unwrap());
-        }
 
         CPUValues {
             pkg: pkg_value,

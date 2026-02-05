@@ -4,17 +4,22 @@ pub mod database;
 pub mod process;
 pub mod sensors;
 
-use std::{thread, time::Duration};
+use core::time;
+use std::{
+    thread,
+    time::{Duration, Instant},
+};
 
+use adlx::gpu;
 use database::Database;
 use display_info::DisplayInfo;
-use hardware_query::HardwareInfo;
 use process::{estimate_app_power_consumption, groups::group_processes_by_app};
-use sensors::{SensorType, create_event_from_sensors};
+use sensors::{SensorType, create_event_from_sensors, gpu::get_gpu_list};
 
 pub struct CollectorApp {
     database: Database,
     sensors: Vec<SensorType>,
+    itteration: u64,
 }
 
 impl CollectorApp {
@@ -23,6 +28,7 @@ impl CollectorApp {
         Ok(CollectorApp {
             database,
             sensors: Vec::new(),
+            itteration: 0,
         })
     }
 
@@ -30,11 +36,14 @@ impl CollectorApp {
         check_permissions()?;
 
         println!("\n========== INITIALIZING SYSTEM ==========\n");
+
         // Initialize hardware information
-        let hw_info = match HardwareInfo::query() {
-            Ok(info) => info,
-            Err(e) => return Err(format!("Failed to query hardware information: {}", e)),
-        };
+        // let time = Instant::now();
+        // let hw_info = match HardwareInfo::query() {
+        //     Ok(info) => info,
+        //     Err(e) => return Err(format!("Failed to query hardware information: {}", e)),
+        // };
+        // println!("Time taken to query hardware info: {:?}", time.elapsed());
         // println!("✓ Hardware information loaded");
         // println!("{:#?}", hw_info);
 
@@ -58,9 +67,12 @@ impl CollectorApp {
         }
 
         // Initialize GPU sensors
-        for (i, gpu) in hw_info.gpus().iter().enumerate() {
-            let gpu_name = format!("{} {}", gpu.vendor(), gpu.model_name());
-            let sensor_gpu = sensors::gpu::get_gpu_power_sensor(&gpu_name, i as u32);
+        let gpu_list = get_gpu_list();
+        print!("\nDetected GPUs:\n");
+        println!("{:#?}", gpu_list);
+        for (i, gpu_name) in gpu_list.iter().enumerate() {
+            print!("  GPU {}: {}\n", i, gpu_name);
+            let sensor_gpu = sensors::gpu::get_gpu_power_sensor(gpu_name, i as u32);
             match sensor_gpu {
                 Ok(sensor) => {
                     println!("✓ GPU Sensor {} initialized for: {}", i, gpu_name);

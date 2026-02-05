@@ -268,9 +268,6 @@ mod intel_gpu {
         fn read_full_data(&self) -> Result<SensorData, SensorError> {
             // First collection initializes the counter
             let _ = self.read_counter();
-
-            std::thread::sleep(Duration::from_millis(100));
-
             // Second collection gets actual value
             let usage_percent = self.read_counter()?;
 

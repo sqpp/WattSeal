@@ -15,7 +15,6 @@ win_ring0 = { git = "https://github.com/alex-dow/winRing0-rs" }
 common = { path = "../common" }
 adlx = "0.0.0-alpha.1"
 display-info = "0.5.7"
-hardware-query = "0.2.1"
 is-admin = "0.1.4"
 nvml-wrapper = "0.11.0"
 sysinfo = "0.37.2"
