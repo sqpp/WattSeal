@@ -130,13 +130,13 @@ impl<'a> ComponentState<'a> {
     }
 
     fn push_data(&mut self, timestamp: DateTime<Utc>, data: &SensorData) {
-        let timestamp = if timestamp.nanosecond() >= 500_000_000 {
-            timestamp.with_nanosecond(0).unwrap_or(timestamp) + chrono::Duration::seconds(1)
-        } else {
-            timestamp.with_nanosecond(0).unwrap_or(timestamp)
-        };
+        let timestamp = timestamp.with_nanosecond(0).unwrap_or(timestamp);
 
         self.latest_reading = Some(data.clone());
+
+        if !self.time_range.is_real_time() {
+            return;
+        }
 
         let power = data.total_power_watts();
         let usage = data.usage_percent();
@@ -151,7 +151,7 @@ impl<'a> ComponentState<'a> {
             }
         }
 
-        let cutoff = timestamp - chrono::Duration::seconds(self.time_range.clone() as i64);
+        let cutoff = timestamp - self.time_range.duration_seconds();
 
         let prune_history = |history: &Rc<RefCell<VecDeque<(DateTime<Utc>, f32)>>>| {
             if let Ok(mut h) = history.try_borrow_mut() {
@@ -171,24 +171,21 @@ impl<'a> ComponentState<'a> {
         self.chart.refresh_cache();
     }
 
-    fn prune_history(&mut self) {
-        let now = Utc::now();
-        let cutoff = now - chrono::Duration::seconds(self.time_range.clone() as i64);
+    fn push_history(&mut self, timestamp: DateTime<Utc>, data: &SensorData) {
+        let timestamp = timestamp.with_nanosecond(0).unwrap_or(timestamp);
 
-        let prune_history = |history: &Rc<RefCell<VecDeque<(DateTime<Utc>, f32)>>>| {
-            if let Ok(mut h) = history.try_borrow_mut() {
-                while let Some(&(ts, _)) = h.front() {
-                    if ts < cutoff {
-                        h.pop_front();
-                    } else {
-                        break;
-                    }
-                }
+        let power = data.total_power_watts();
+        let usage = data.usage_percent();
+        if let Some(p) = power {
+            if let Ok(mut history) = self.power_history.try_borrow_mut() {
+                history.push_back((timestamp, p as f32));
             }
-        };
-
-        prune_history(&self.power_history);
-        prune_history(&self.usage_history);
+        }
+        if let Some(u) = usage {
+            if let Ok(mut history) = self.usage_history.try_borrow_mut() {
+                history.push_back((timestamp, u as f32));
+            }
+        }
     }
 
     fn update_time_range(&mut self, time_range: TimeRange) {
