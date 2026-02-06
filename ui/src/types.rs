@@ -19,6 +19,18 @@ impl TimeRange {
         }
     }
 
+    pub fn granularity_seconds(&self) -> i64 {
+        match self {
+            TimeRange::LastMinute => 1,
+            TimeRange::LastHour => 60,
+            TimeRange::Last24Hours => 3600,
+        }
+    }
+
+    pub fn is_real_time(&self) -> bool {
+        matches!(self, TimeRange::LastMinute)
+    }
+
     pub fn duration_seconds(&self) -> Duration {
         chrono::Duration::seconds(self.clone() as i64)
     }
