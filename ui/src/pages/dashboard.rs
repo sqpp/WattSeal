@@ -88,8 +88,7 @@ impl<'a> DashboardPage<'a> {
             .padding(Padding::from(PADDING_LARGE))
             .width(Length::Fill)
             .height(Length::Fill)
-            .push(self.chart_or_placeholder(TotalData::table_name_static(), "Total Power Over Time", 300.0, false))
-            .push(self.chart_or_placeholder(CPUData::table_name_static(), "CPU Power Over Time", 300.0, true))
+            .push(self.chart_or_placeholder(None, TotalData::table_name_static(), 300.0, false))
             .push(self.view_component_cards());
 
         content
@@ -100,24 +99,6 @@ impl<'a> DashboardPage<'a> {
                     .class(ScrollableStyle::Standard),
             )
             .into()
-    }
-
-    fn chart_or_placeholder<'b>(
-        &'b self,
-        table_name: &str,
-        title: &'b str,
-        height: f32,
-        show_metric_switch: bool,
-    ) -> Element<'b, Message, AppTheme> {
-        self.components
-            .get(table_name)
-            .map(|c| c.chart_card(title, height, show_metric_switch))
-            .unwrap_or_else(|| {
-                Text::new("No data available")
-                    .size(FONT_SIZE_BODY)
-                    .class(TextStyle::Muted)
-                    .into()
-            })
     }
 
     fn view_power_summary(&self) -> Element<'_, Message, AppTheme> {
@@ -173,7 +154,7 @@ impl<'a> DashboardPage<'a> {
             .filter(|(table_name, _)| *table_name != TotalData::table_name_static())
             .enumerate()
         {
-            let card = component.snapshot_card();
+            let card = component.chart_card(None, 200.0, true);
 
             row = row.push(card);
             items_in_row += 1;
@@ -194,5 +175,23 @@ impl<'a> DashboardPage<'a> {
             .padding(Padding::from(PADDING_LARGE))
             .class(ContainerStyle::Card)
             .into()
+    }
+
+    fn chart_or_placeholder<'b>(
+        &'b self,
+        title: Option<&'b str>,
+        table_name: &str,
+        height: f32,
+        show_usage: bool,
+    ) -> Element<'b, Message, AppTheme> {
+        self.components
+            .get(table_name)
+            .map(|c| c.chart_card(title, height, show_usage))
+            .unwrap_or_else(|| {
+                Text::new("No data available")
+                    .size(FONT_SIZE_BODY)
+                    .class(TextStyle::Muted)
+                    .into()
+            })
     }
 }

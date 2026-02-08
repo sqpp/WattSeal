@@ -12,8 +12,10 @@ use crate::{
     message::Message,
     styles::{
         container::ContainerStyle,
+        picklist::PickListStyle,
         style_constants::{
-            FONT_BOLD, FONT_SIZE_BODY, FONT_SIZE_SUBTITLE, PADDING_LARGE, SPACING_LARGE, SPACING_MEDIUM, SPACING_XLARGE,
+            FONT_BOLD, FONT_SIZE_BODY, FONT_SIZE_SUBTITLE, PADDING_LARGE, SPACING_LARGE, SPACING_MEDIUM, SPACING_SMALL,
+            SPACING_XLARGE,
         },
         text::TextStyle,
     },
@@ -50,8 +52,12 @@ impl<'a> ComponentState<'a> {
             line_type: LineType::default(),
         };
         state.update_metric_type(MetricType::default());
-        let _ = state.update_time_range(TimeRange::default());
+        let _ = state.apply_time_range(TimeRange::default());
         state
+    }
+
+    pub fn name(&self) -> &str {
+        &self.sensor_type
     }
 
     fn append_to_history(&self, timestamp: DateTime<Local>, data: &SensorData) {
@@ -102,10 +108,7 @@ impl<'a> ComponentState<'a> {
         self.refresh_chart();
     }
 
-    pub fn update_time_range(&mut self, time_range: TimeRange) -> Task<Message> {
-        if self.time_range == time_range {
-            return Task::none();
-        }
+    fn apply_time_range(&mut self, time_range: TimeRange) -> Task<Message> {
         self.time_range = time_range;
         let label = "Time";
         let unit = self.time_range.unit();
@@ -121,6 +124,13 @@ impl<'a> ComponentState<'a> {
             self.table_name.clone(),
             self.time_range.clone(),
         ))
+    }
+
+    pub fn update_time_range(&mut self, time_range: TimeRange) -> Task<Message> {
+        if self.time_range == time_range {
+            return Task::none();
+        }
+        self.apply_time_range(time_range)
     }
 
     pub fn switch_metric_type(&mut self) {
@@ -166,65 +176,27 @@ impl<'a> ComponentState<'a> {
 
     pub fn chart_card<'b>(
         &'b self,
-        title: &'b str,
+        title: Option<&'b str>,
         height: f32,
-        show_switch_metric: bool,
+        show_usage: bool,
     ) -> Element<'b, Message, AppTheme> {
-        let title = Text::new(title)
+        let chart_container = Container::new(self.chart.view(height)).width(Length::Fill);
+
+        let power = self.latest_reading.as_ref().and_then(|data| data.total_power_watts());
+        let power_text = power
+            .map(|p| format!("{:.1} W", p))
+            .unwrap_or_else(|| "N/A".to_string());
+
+        let title = Text::new(title.unwrap_or(&self.sensor_type))
             .size(FONT_SIZE_SUBTITLE)
-            .font(FONT_BOLD)
-            .class(TextStyle::Subtitle)
-            .width(Length::Fill);
+            .font(FONT_BOLD);
 
         let time_range_selector = pick_list(
             [TimeRange::LastMinute, TimeRange::LastHour, TimeRange::Last24Hours],
             Some(self.time_range.clone()),
             |tr| Message::ChangeChartTimeRange(self.table_name.clone(), tr),
-        );
-
-        let mut first_row = Row::new()
-            .spacing(SPACING_XLARGE)
-            .align_y(Alignment::Center)
-            .push(title)
-            .push(time_range_selector);
-
-        if show_switch_metric {
-            let metric_type_button = button(Text::new(self.metric_type.toggled().to_string()).size(FONT_SIZE_BODY))
-                .on_press(Message::ChangeChartMetricType(self.table_name.clone()));
-
-            first_row = first_row.push(metric_type_button);
-        }
-
-        let chart_container = Container::new(self.chart.view(height))
-            .width(Length::Fill)
-            .height(Length::Fill);
-
-        let content = Column::new()
-            .spacing(SPACING_MEDIUM)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .push(first_row)
-            .push(chart_container);
-
-        Container::new(content)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .padding(Padding::from(PADDING_LARGE))
-            .class(ContainerStyle::Card)
-            .into()
-    }
-
-    pub fn snapshot_card(&self) -> Element<'_, Message, AppTheme> {
-        let name_owned = &self.sensor_type;
-        let power = self.latest_reading.as_ref().and_then(|data| data.total_power_watts());
-        let usage = self.latest_reading.as_ref().and_then(|data| data.usage_percent());
-        let power_text = power
-            .map(|p| format!("{:.1} W", p))
-            .unwrap_or_else(|| "N/A".to_string());
-
-        let usage_text = usage.map(|u| format!("{:.1}%", u)).unwrap_or_else(|| "N/A".to_string());
-
-        let title = Text::new(name_owned).size(FONT_SIZE_SUBTITLE).font(FONT_BOLD);
+        )
+        .class(PickListStyle::Standard);
 
         let power_style = if power.is_some() {
             TextStyle::Primary
@@ -232,39 +204,71 @@ impl<'a> ComponentState<'a> {
             TextStyle::Muted
         };
 
-        let usage_style = if usage.is_some() {
-            TextStyle::Success
-        } else {
-            TextStyle::Muted
-        };
-
-        let power_row = Row::new()
-            .spacing(SPACING_MEDIUM)
+        let first_row = Row::new()
+            .spacing(SPACING_XLARGE)
             .align_y(Alignment::Center)
-            .push(Text::new("Power:").size(FONT_SIZE_BODY).class(TextStyle::Muted))
-            .push(
-                Text::new(power_text)
-                    .size(FONT_SIZE_BODY)
-                    .font(FONT_BOLD)
-                    .class(power_style),
-            );
+            .push(title);
 
-        let usage_row = Row::new()
-            .spacing(SPACING_MEDIUM)
+        let mut second_row_left = Column::new()
+            .spacing(SPACING_SMALL)
+            .push(
+                Row::new()
+                    .spacing(SPACING_MEDIUM)
+                    .align_y(Alignment::Center)
+                    .push(Text::new("Power:").size(FONT_SIZE_BODY).class(TextStyle::Muted))
+                    .push(
+                        Text::new(power_text)
+                            .size(FONT_SIZE_BODY)
+                            .class(power_style)
+                            .font(FONT_BOLD),
+                    ),
+            )
+            .width(Length::Fill);
+
+        let mut second_row_right = Row::new()
+            .spacing(SPACING_XLARGE)
             .align_y(Alignment::Center)
-            .push(Text::new("Usage:").size(FONT_SIZE_BODY).class(TextStyle::Muted))
-            .push(
-                Text::new(usage_text)
-                    .size(FONT_SIZE_BODY)
-                    .font(FONT_BOLD)
-                    .class(usage_style),
-            );
+            .push(time_range_selector);
 
-        let content = Column::new()
-            .spacing(SPACING_LARGE)
-            .push(title)
-            .push(power_row)
-            .push(usage_row);
+        if show_usage {
+            let usage = self.latest_reading.as_ref().and_then(|data| data.usage_percent());
+            let usage_text = usage
+                .map(|u| format!("{:.1} %", u))
+                .unwrap_or_else(|| "N/A".to_string());
+            let usage_style = if usage.is_some() {
+                TextStyle::Success
+            } else {
+                TextStyle::Muted
+            };
+            let metric_type_button = button(Text::new(self.metric_type.toggled().to_string()).size(FONT_SIZE_BODY))
+                .on_press(Message::ChangeChartMetricType(self.table_name.clone()));
+
+            second_row_left = second_row_left.push(
+                Row::new()
+                    .spacing(SPACING_MEDIUM)
+                    .align_y(Alignment::Center)
+                    .push(Text::new("Usage:").size(FONT_SIZE_BODY).class(TextStyle::Muted))
+                    .push(
+                        Text::new(usage_text)
+                            .size(FONT_SIZE_BODY)
+                            .class(usage_style)
+                            .font(FONT_BOLD),
+                    ),
+            );
+            second_row_right = second_row_right.push(metric_type_button);
+        }
+
+        let content = Column::new().spacing(SPACING_LARGE).push(first_row).push(
+            Column::new()
+                .push(
+                    Row::new()
+                        .spacing(SPACING_LARGE)
+                        .align_y(Alignment::Center)
+                        .push(second_row_left)
+                        .push(second_row_right),
+                )
+                .push(chart_container),
+        );
 
         Container::new(content)
             .width(Length::Fill)
