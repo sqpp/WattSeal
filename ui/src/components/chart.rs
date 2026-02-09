@@ -4,7 +4,7 @@ use std::{
     rc::Rc,
 };
 
-use chrono::{DateTime, Duration, Local, TimeZone};
+use chrono::{DateTime, Duration, Local, TimeZone, Timelike};
 use common::SensorData;
 use iced::{
     Element, Length, Point, Rectangle, Size,
@@ -31,12 +31,12 @@ const PLOT_SECONDS: usize = 60;
 const SNAP_DISTANCE_PX: f32 = 30.0;
 const VALUE_MIN: f32 = 0.0;
 const VALUE_MAX: f32 = 100.0;
-const X_LABEL_AREA_SIZE: f32 = 50.0;
-const Y_LABEL_AREA_SIZE: f32 = 80.0;
+const X_LABEL_AREA_SIZE: f32 = 15.0;
+const Y_LABEL_AREA_SIZE: f32 = 50.0;
 // const RIGHT_Y_LABEL_AREA_SIZE: f32 = 90.0;
 const CHART_MARGIN: f32 = 20.0;
-const CHART_MARGIN_LEFT: f32 = 40.0;
-const CHART_MARGIN_RIGHT: f32 = 40.0;
+const CHART_MARGIN_LEFT: f32 = 0.0;
+const CHART_MARGIN_RIGHT: f32 = 10.0;
 
 const TOOLTIP_WIDTH: f32 = 150.0;
 const TOOLTIP_MIN_HEIGHT: f32 = 60.0;
@@ -409,12 +409,35 @@ impl<'a> SensorChart<'a> {
         (oldest, newest)
     }
 
+    fn format_x_label(&self, x: &DateTime<Local>, total_secs: i64, newest: &DateTime<Local>) -> String {
+        match total_secs {
+            0..=120 => {
+                let seconds_ago = (newest.timestamp() - x.timestamp()).max(0);
+                if seconds_ago % 10 == 0 {
+                    format!("{}s", seconds_ago)
+                } else {
+                    "".to_string()
+                }
+            }
+            121..=86400 => x.format("%H:%M").to_string(),
+            _ => {
+                if x.hour() == 0 && x.minute() == 0 {
+                    x.format("%Y-%m-%d").to_string()
+                } else {
+                    "".to_string()
+                }
+            }
+        }
+    }
+
     fn build_chart_2d<DB: DrawingBackend>(&self, mut builder: ChartBuilder<DB>) {
         use plotters::prelude::*;
 
         let style = &self.style;
         let (oldest_time, newest_time) = self.time_bounds();
         let label_style = ("sans-serif", 15).into_font().color(&style.text);
+
+        let x_seconds = self.x_range.num_seconds();
 
         let mut chart = builder
             .x_label_area_size(X_LABEL_AREA_SIZE)
@@ -433,15 +456,9 @@ impl<'a> SensorChart<'a> {
             .y_labels(5)
             .y_label_style(label_style.clone())
             .y_label_formatter(&|y: &f32| format!("{}{}", y, self.y_unit))
-            .y_desc(format!("{} ({})", self.y_axis_label, self.y_unit))
-            .axis_desc_style(label_style.clone().transform(FontTransform::Rotate90))
             .x_label_style(label_style.clone())
-            .x_labels(60)
-            .x_label_formatter(&|x: &DateTime<Local>| {
-                let t = (newest_time.timestamp_millis() - x.timestamp_millis()) / 1000;
-                if t % 5 == 0 { format!("{}", t) } else { "".to_string() }
-            })
-            .x_desc(format!("{} ({})", self.x_axis_label, self.x_unit))
+            .x_labels(if x_seconds <= 120 { x_seconds as usize } else { 7 })
+            .x_label_formatter(&|x: &DateTime<Local>| self.format_x_label(x, x_seconds, &newest_time))
             .draw()
             .expect("failed to draw chart mesh");
 
@@ -583,11 +600,19 @@ impl<'a> SensorChart<'a> {
         if let Some(desc) = &content.description {
             area.draw(&Text::new(desc.clone(), (text_x, text_y), text_style)).ok();
         }
+
+        // draw tooltip point to test position
+        // area.draw(&Circle::new(
+        //     (tooltip.point_x as i32, tooltip.point_y as i32),
+        //     5,
+        //     ShapeStyle::from(series_color).filled(),
+        // ))
+        // .ok();
     }
 
     fn hovered_point_at(&self, cursor: Point, bounds: Size, snap_distance: f32) -> Option<TooltipData> {
         let chart_bounds = Size::new(
-            bounds.width - Y_LABEL_AREA_SIZE - 2.0 * CHART_MARGIN - CHART_MARGIN_LEFT,
+            bounds.width - Y_LABEL_AREA_SIZE - CHART_MARGIN_LEFT - CHART_MARGIN_RIGHT,
             bounds.height - X_LABEL_AREA_SIZE - 2.0 * CHART_MARGIN,
         );
 
