@@ -31,7 +31,7 @@ pub struct App<'a> {
 
 impl<'a> App<'a> {
     pub fn new() -> (Self, Task<Message>) {
-        let theme = AppTheme::Dracula;
+        let theme = AppTheme::EcoEnergy;
         let current_page = Page::Dashboard;
         let database = Database::new().unwrap();
         let materials = database.get_tables();
