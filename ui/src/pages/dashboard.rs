@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 use common::{DatabaseEntry, TotalData, generic_name_for_table};
 use iced::{
@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub struct DashboardPage<'a> {
-    components: BTreeMap<String, ComponentState<'a>>,
+    components: HashMap<String, ComponentState<'a>>,
 }
 
 impl<'a> DashboardPage<'a> {
@@ -145,15 +145,36 @@ impl<'a> DashboardPage<'a> {
 
     fn view_component_cards(&self) -> Element<'_, Message, AppTheme> {
         let mut column = Column::new().spacing(SPACING_LARGE).width(Length::Fill);
-        let mut row = Row::new().spacing(SPACING_LARGE).width(Length::Fill);
-        let mut items_in_row = 0;
 
-        for (i, (_, component)) in self
+        let mut components: Vec<(&String, &ComponentState<'a>)> = self
             .components
             .iter()
             .filter(|(table_name, _)| *table_name != TotalData::table_name_static())
-            .enumerate()
-        {
+            .collect();
+
+        fn priority(name: &str) -> usize {
+            let lower = name.to_lowercase();
+            if lower.contains("cpu") {
+                0
+            } else if lower.contains("gpu") {
+                1
+            } else if lower.contains("ram") {
+                2
+            } else if lower.contains("disk") {
+                3
+            } else if lower.contains("network") {
+                4
+            } else {
+                5
+            }
+        }
+
+        components.sort_by_key(|(name, _)| (priority(name.as_str()), *name));
+
+        let mut row = Row::new().spacing(SPACING_LARGE).width(Length::Fill);
+        let mut items_in_row = 0usize;
+
+        for (i, (_, component)) in components.into_iter().enumerate() {
             let card = component.chart_card(None, 200.0, true);
 
             row = row.push(card);
