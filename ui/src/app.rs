@@ -76,7 +76,7 @@ impl<'a> App<'a> {
                 let data = self.load_history(&table_name, time_range);
                 self.dashboard_page.update(Message::ReplaceChartData(table_name, data))
             }
-            msg @ (Message::ChangeChartMetricType(_) | Message::ChangeChartTimeRange(..)) => {
+            msg @ (Message::ChangeChartMetricType(..) | Message::ChangeChartTimeRange(..)) => {
                 self.dashboard_page.update(msg)
             }
             _ => Task::none(),

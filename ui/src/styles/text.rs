@@ -8,7 +8,8 @@ pub enum TextStyle {
     #[default]
     Default,
     Primary,
-    Success,
+    Secondary,
+    Tertiary,
     Muted,
     Subtitle,
 }
@@ -26,7 +27,8 @@ impl Catalog for AppTheme {
         let color = match class {
             TextStyle::Default => ext.text,
             TextStyle::Primary => ext.primary,
-            TextStyle::Success => ext.success,
+            TextStyle::Secondary => ext.success,
+            TextStyle::Tertiary => ext.danger,
             TextStyle::Muted => ext.text_muted,
             TextStyle::Subtitle => ext.text_muted,
         };

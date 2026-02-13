@@ -55,9 +55,9 @@ impl<'a> DashboardPage<'a> {
                     }
                 }
             }
-            Message::ChangeChartMetricType(table_name) => {
+            Message::ChangeChartMetricType(table_name, metric_type) => {
                 if let Some(component) = self.components.get_mut(&table_name) {
-                    component.switch_metric_type();
+                    component.set_metric_type(metric_type);
                 }
             }
             Message::ChangeChartTimeRange(sensor_type, time_range) => {

@@ -91,6 +91,89 @@ pub struct TotalData {
     pub period_type: String,
 }
 
+#[derive(Default, PartialEq, Clone, Copy, Debug)]
+pub enum MetricType {
+    #[default]
+    Power,
+    Usage,
+    Speed,
+}
+
+impl Display for MetricType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MetricType::Power => write!(f, "Power"),
+            MetricType::Usage => write!(f, "Usage"),
+            MetricType::Speed => write!(f, "Speed"),
+        }
+    }
+}
+
+impl MetricType {
+    pub fn label(&self) -> &'static str {
+        match self {
+            MetricType::Power => "Power",
+            MetricType::Usage => "Usage",
+            MetricType::Speed => "Speed",
+        }
+    }
+
+    pub fn unit(&self) -> &'static str {
+        match self {
+            MetricType::Power => "W",
+            MetricType::Usage => "%",
+            MetricType::Speed => "MB/s",
+        }
+    }
+
+    pub fn legend(&self, component_name: &str) -> String {
+        format!("{} {}", component_name, self.label())
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct LabeledValue {
+    pub label: &'static str,
+    pub value: Option<f64>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SecondaryValues {
+    pub metric_type: MetricType,
+    pub values: Vec<LabeledValue>,
+}
+
+impl SecondaryValues {
+    fn from_labeled_values(metric_type: MetricType, values: Vec<LabeledValue>) -> Self {
+        Self { metric_type, values }
+    }
+
+    pub fn values(&self) -> &Vec<LabeledValue> {
+        &self.values
+    }
+
+    pub fn metric_type(&self) -> MetricType {
+        self.metric_type
+    }
+}
+
+impl LabeledValue {
+    fn from_percent(percent: Option<f64>, label: &'static str) -> Self {
+        Self { label, value: percent }
+    }
+
+    fn from_usage_percent(percent: Option<f64>) -> Self {
+        Self::from_percent(percent, "Usage")
+    }
+
+    fn from_mb_s(speed: Option<f64>, label: &'static str) -> Self {
+        Self {
+            label: label,
+            value: speed,
+        }
+    }
+}
+
 impl SensorData {
     pub fn sensor_type(&self) -> &'static str {
         match self {
@@ -128,11 +211,43 @@ impl SensorData {
         }
     }
 
-    pub fn usage_percent(&self) -> Option<f64> {
+    pub fn secondary_values(&self) -> Option<SecondaryValues> {
+        let metric_type = self.secondary_metric()?;
         match self {
-            SensorData::CPU(data) => data.usage_percent,
-            SensorData::GPU(data) => data.usage_percent,
-            SensorData::Ram(data) => data.usage_percent,
+            SensorData::CPU(data) => Some(SecondaryValues::from_labeled_values(
+                metric_type,
+                vec![LabeledValue::from_usage_percent(data.usage_percent)],
+            )),
+            SensorData::GPU(data) => Some(SecondaryValues::from_labeled_values(
+                metric_type,
+                vec![LabeledValue::from_usage_percent(data.usage_percent)],
+            )),
+            SensorData::Ram(data) => Some(SecondaryValues::from_labeled_values(
+                metric_type,
+                vec![LabeledValue::from_usage_percent(data.usage_percent)],
+            )),
+            SensorData::Disk(data) => Some(SecondaryValues::from_labeled_values(
+                metric_type,
+                vec![
+                    LabeledValue::from_mb_s(Some(data.read_usage_mb_s), "Read"),
+                    LabeledValue::from_mb_s(Some(data.write_usage_mb_s), "Write"),
+                ],
+            )),
+            SensorData::Network(data) => Some(SecondaryValues::from_labeled_values(
+                metric_type,
+                vec![
+                    LabeledValue::from_mb_s(Some(data.download_speed_mb_s), "Download"),
+                    LabeledValue::from_mb_s(Some(data.upload_speed_mb_s), "Upload"),
+                ],
+            )),
+            _ => None,
+        }
+    }
+
+    pub fn secondary_metric(&self) -> Option<MetricType> {
+        match self {
+            SensorData::CPU(_) | SensorData::GPU(_) | SensorData::Ram(_) => Some(MetricType::Usage),
+            SensorData::Disk(_) | SensorData::Network(_) => Some(MetricType::Speed),
             _ => None,
         }
     }
