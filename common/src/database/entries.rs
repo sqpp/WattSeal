@@ -1,6 +1,6 @@
 use rusqlite::{Row, ToSql};
 
-use crate::types::{CPUData, DiskData, GPUData, NetworkData, ProcessData, RamData, TotalData};
+use crate::types::{CPUData, DiskData, GPUData, NetworkData, ProcessData, RamData, SensorData, TotalData};
 
 pub trait DatabaseEntry {
     fn generic_name() -> &'static str;
@@ -10,6 +10,13 @@ pub trait DatabaseEntry {
     fn from_row(row: &Row) -> rusqlite::Result<Self>
     where
         Self: Sized;
+
+    fn zero() -> SensorData
+    where
+        Self: Default + Into<SensorData>,
+    {
+        Self::default().into()
+    }
 
     fn insert_sql() -> String {
         let cols = Self::columns_static();
@@ -279,5 +286,83 @@ impl DatabaseEntry for ProcessData {
             cpu_usage_watts: row.get("cpu_usage_watts")?,
             subprocess_count: row.get::<_, i64>("subprocess_count")? as u32,
         })
+    }
+    fn zero() -> SensorData {
+        SensorData::Process(Vec::new())
+    }
+}
+
+mod tests {
+    use super::{CPUData, DatabaseEntry, DiskData, GPUData, NetworkData, ProcessData, RamData, SensorData, TotalData};
+
+    #[test]
+    fn zero_defaults_are_zero_filled() {
+        // CPU
+        match CPUData::zero() {
+            SensorData::CPU(cpu) => {
+                assert_eq!(cpu.total_power_watts, Some(0.0));
+                assert_eq!(cpu.pp0_power_watts, Some(0.0));
+                assert_eq!(cpu.pp1_power_watts, Some(0.0));
+                assert_eq!(cpu.dram_power_watts, Some(0.0));
+                assert_eq!(cpu.usage_percent, Some(0.0));
+            }
+            _ => panic!("CPUData::zero() returned wrong SensorData variant"),
+        }
+
+        // GPU
+        match GPUData::zero() {
+            SensorData::GPU(gpu) => {
+                assert_eq!(gpu.total_power_watts, Some(0.0));
+                assert_eq!(gpu.usage_percent, Some(0.0));
+                assert_eq!(gpu.vram_usage_percent, Some(0.0));
+            }
+            _ => panic!("GPUData::zero() returned wrong SensorData variant"),
+        }
+
+        // RAM
+        match RamData::zero() {
+            SensorData::Ram(ram) => {
+                assert_eq!(ram.total_power_watts, Some(0.0));
+                assert_eq!(ram.usage_percent, Some(0.0));
+            }
+            _ => panic!("RamData::zero() returned wrong SensorData variant"),
+        }
+
+        // Disk
+        match DiskData::zero() {
+            SensorData::Disk(disk) => {
+                assert_eq!(disk.total_power_watts, Some(0.0));
+                assert_eq!(disk.read_usage_mb_s, 0.0);
+                assert_eq!(disk.write_usage_mb_s, 0.0);
+            }
+            _ => panic!("DiskData::zero() returned wrong SensorData variant"),
+        }
+
+        // Network
+        match NetworkData::zero() {
+            SensorData::Network(net) => {
+                assert_eq!(net.total_power_watts, Some(0.0));
+                assert_eq!(net.download_speed_mb_s, 0.0);
+                assert_eq!(net.upload_speed_mb_s, 0.0);
+            }
+            _ => panic!("NetworkData::zero() returned wrong SensorData variant"),
+        }
+
+        // Total
+        match TotalData::zero() {
+            SensorData::Total(total) => {
+                assert_eq!(total.total_power_watts, 0.0);
+                assert_eq!(total.period_type, "second");
+            }
+            _ => panic!("TotalData::zero() returned wrong SensorData variant"),
+        }
+
+        // Process
+        match ProcessData::zero() {
+            SensorData::Process(vec) => {
+                assert!(vec.is_empty());
+            }
+            _ => panic!("ProcessData::zero() returned wrong SensorData variant"),
+        }
     }
 }

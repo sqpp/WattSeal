@@ -26,7 +26,7 @@ impl Event {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct CPUData {
     pub total_power_watts: Option<f64>,
     pub pp0_power_watts: Option<f64>,
@@ -35,21 +35,21 @@ pub struct CPUData {
     pub usage_percent: Option<f64>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct GPUData {
     pub total_power_watts: Option<f64>,
     pub usage_percent: Option<f64>,
     pub vram_usage_percent: Option<f64>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct RamData {
     pub total_power_watts: Option<f64>,
     // pub total_gb: f64,
     pub usage_percent: Option<f64>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct DiskData {
     pub total_power_watts: Option<f64>,
     // pub total_gb: f64,
@@ -59,7 +59,7 @@ pub struct DiskData {
     pub write_usage_mb_s: f64,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct NetworkData {
     pub total_power_watts: Option<f64>,
     pub download_speed_mb_s: f64,
@@ -85,7 +85,7 @@ pub enum SensorData {
     Process(Vec<ProcessData>),
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct TotalData {
     pub total_power_watts: f64,
     pub period_type: String,
@@ -365,5 +365,76 @@ impl From<NetworkData> for SensorData {
 impl From<ProcessData> for SensorData {
     fn from(data: ProcessData) -> Self {
         SensorData::Process(vec![data])
+    }
+}
+
+impl Default for CPUData {
+    fn default() -> Self {
+        CPUData {
+            total_power_watts: Some(0.0),
+            pp0_power_watts: Some(0.0),
+            pp1_power_watts: Some(0.0),
+            dram_power_watts: Some(0.0),
+            usage_percent: Some(0.0),
+        }
+    }
+}
+
+impl Default for GPUData {
+    fn default() -> Self {
+        GPUData {
+            total_power_watts: Some(0.0),
+            usage_percent: Some(0.0),
+            vram_usage_percent: Some(0.0),
+        }
+    }
+}
+
+impl Default for RamData {
+    fn default() -> Self {
+        RamData {
+            total_power_watts: Some(0.0),
+            usage_percent: Some(0.0),
+        }
+    }
+}
+
+impl Default for DiskData {
+    fn default() -> Self {
+        DiskData {
+            total_power_watts: Some(0.0),
+            read_usage_mb_s: 0.0,
+            write_usage_mb_s: 0.0,
+        }
+    }
+}
+
+impl Default for NetworkData {
+    fn default() -> Self {
+        NetworkData {
+            total_power_watts: Some(0.0),
+            download_speed_mb_s: 0.0,
+            upload_speed_mb_s: 0.0,
+        }
+    }
+}
+
+impl Default for ProcessData {
+    fn default() -> Self {
+        ProcessData {
+            app_name: String::new(),
+            vram_usage: 0.0,
+            cpu_usage_watts: 0.0,
+            subprocess_count: 0,
+        }
+    }
+}
+
+impl Default for TotalData {
+    fn default() -> Self {
+        TotalData {
+            total_power_watts: 0.0,
+            period_type: "second".to_string(),
+        }
     }
 }
