@@ -6,7 +6,7 @@ use std::{collections::HashMap, time::SystemTime};
 
 pub use entries::DatabaseEntry;
 pub use purge::averaging_and_purging_data;
-use rusqlite::{Connection, OptionalExtension, Row, ToSql, Transaction, params};
+use rusqlite::{Connection, OptionalExtension, Row, Transaction, params};
 
 use crate::types::{CPUData, DiskData, Event, GPUData, NetworkData, ProcessData, RamData, SensorData, TotalData};
 
@@ -183,22 +183,30 @@ impl Database {
         start_time: SystemTime,
         end_time: SystemTime,
     ) -> Result<Vec<(SystemTime, SensorData)>, DatabaseError> {
-        let start_time_millis = start_time.duration_since(SystemTime::UNIX_EPOCH)?.as_millis() as i64;
-        let end_time_millis = end_time.duration_since(SystemTime::UNIX_EPOCH)?.as_millis() as i64;
+        let start_time_millis = to_epoch_millis(start_time)?;
+        let end_time_millis = to_epoch_millis(end_time)?;
 
-        let query = format!(
-            "SELECT t.timestamp, d.* FROM timestamp t JOIN {} d ON t.id = d.timestamp_id \
-             WHERE t.timestamp >= {} AND t.timestamp <= {} ORDER BY t.timestamp ASC",
-            table_name, start_time_millis, end_time_millis
-        );
+        let sensor_data_list = self.select_table_between_millis(table_name, start_time_millis, end_time_millis)?;
+        Ok(to_system_time_records(sensor_data_list))
+    }
 
-        let sensor_data_list = self.execute_sensor_query(table_name, &query, [])?;
-        let mut records = Vec::<(SystemTime, SensorData)>::new();
-        for (ts_millis, sensor_data) in sensor_data_list {
-            let timestamp = SystemTime::UNIX_EPOCH + time::Duration::from_millis(ts_millis as u64);
-            records.push((timestamp, sensor_data));
+    pub fn select_all_data_in_time_range(
+        &mut self,
+        start_time: SystemTime,
+        end_time: SystemTime,
+    ) -> Result<Vec<(SystemTime, SensorData)>, DatabaseError> {
+        let start_time_millis = to_epoch_millis(start_time)?;
+        let end_time_millis = to_epoch_millis(end_time)?;
+
+        let mut records = Vec::<(i64, SensorData)>::new();
+        if let Some(tables) = &self.tables {
+            for table_name in tables {
+                let mut table_records =
+                    self.select_table_between_millis(table_name, start_time_millis, end_time_millis)?;
+                records.append(&mut table_records);
+            }
         }
-        Ok(records)
+        Ok(to_system_time_records(records))
     }
 
     pub fn select_last_n_seconds_average(
@@ -207,26 +215,29 @@ impl Database {
         table_name: &str,
         window_seconds: i64,
     ) -> Result<Vec<(SystemTime, SensorData)>, DatabaseError> {
-        let avg_cols = get_avg_columns(table_name, "d.");
-        let query = format!(
-            "SELECT t.timestamp, {} FROM timestamp t \
-             JOIN {} d ON t.id = d.timestamp_id \
-             WHERE t.timestamp >= ?1 \
-             GROUP BY (t.timestamp / (?2 * 1000)) \
-             ORDER BY t.timestamp ASC",
-            avg_cols, table_name
-        );
-        let start_time_millis = (SystemTime::now() - time::Duration::from_secs(n as u64))
-            .duration_since(SystemTime::UNIX_EPOCH)?
-            .as_millis() as i64;
-        let sensor_data_list =
-            self.execute_sensor_query(table_name, &query, params![start_time_millis, window_seconds])?;
-        let mut records = Vec::<(SystemTime, SensorData)>::new();
-        for (ts_millis, sensor_data) in sensor_data_list {
-            let timestamp = SystemTime::UNIX_EPOCH + time::Duration::from_millis(ts_millis as u64);
-            records.push((timestamp, sensor_data));
+        if n <= 0 || window_seconds <= 0 {
+            return Ok(Vec::new());
         }
-        Ok(records)
+
+        if table_name == ProcessData::table_name_static() {
+            return Ok(Vec::new());
+        }
+
+        let now_ms = to_epoch_millis(SystemTime::now())?;
+        let window_ms = window_seconds * 1000;
+        let bucket_count = ((n + window_seconds) / window_seconds).max(1);
+
+        let end_window_start = align_to_window_start(now_ms, window_ms);
+        let start_window_start = end_window_start - (bucket_count) * window_ms;
+        let query_end_exclusive = end_window_start + window_ms;
+
+        let sensor_data_list = if table_name == TotalData::table_name_static() {
+            self.select_windowed_total_data(start_window_start, query_end_exclusive, window_seconds)?
+        } else {
+            self.select_windowed_table_data(table_name, start_window_start, query_end_exclusive, window_seconds)?
+        };
+
+        Ok(to_system_time_records(sensor_data_list))
     }
 
     pub fn select_last_n_records(&mut self, n: i64) -> Result<Vec<(SystemTime, SensorData)>, DatabaseError> {
@@ -315,8 +326,184 @@ impl Database {
 
         rows.collect()
     }
+
+    fn select_table_between_millis(
+        &self,
+        table_name: &str,
+        start_time_millis: i64,
+        end_time_millis: i64,
+    ) -> Result<Vec<(i64, SensorData)>, DatabaseError> {
+        let query = format!(
+            "SELECT t.timestamp, d.* FROM timestamp t JOIN {} d ON t.id = d.timestamp_id \
+             WHERE t.timestamp >= ?1 AND t.timestamp <= ?2 ORDER BY t.timestamp ASC",
+            table_name
+        );
+
+        Ok(self.execute_sensor_query(table_name, &query, params![start_time_millis, end_time_millis])?)
+    }
+
+    fn select_windowed_table_data(
+        &self,
+        table_name: &str,
+        start_window_start: i64,
+        end_exclusive: i64,
+        window_seconds: i64,
+    ) -> Result<Vec<(i64, SensorData)>, DatabaseError> {
+        let avg_cols = get_windowed_average_columns(table_name, "d.", window_seconds)?;
+        let query = format!(
+            "SELECT
+                (t.timestamp / (?2 * 1000)) * (?2 * 1000) AS window_start,
+                {}
+             FROM timestamp t
+             JOIN {} d ON t.id = d.timestamp_id
+             WHERE t.timestamp >= ?1 AND t.timestamp < ?3
+             GROUP BY window_start
+             ORDER BY window_start ASC",
+            avg_cols, table_name
+        );
+
+        let rows = self.execute_sensor_query(
+            table_name,
+            &query,
+            params![start_window_start, window_seconds, end_exclusive],
+        )?;
+
+        let mut by_window = HashMap::new();
+        for (window_start, data) in rows {
+            by_window.insert(window_start, data);
+        }
+
+        let mut filled = Vec::new();
+        let mut current = start_window_start;
+        while current < end_exclusive {
+            let data = by_window
+                .remove(&current)
+                .or_else(|| zero_sensor_data(table_name))
+                .ok_or_else(|| {
+                    DatabaseError::QueryError(format!("Unsupported table for windowed average: {}", table_name))
+                })?;
+            filled.push((current, data));
+            current += window_seconds * 1000;
+        }
+
+        Ok(filled)
+    }
+
+    fn select_windowed_total_data(
+        &self,
+        start_window_start: i64,
+        end_exclusive: i64,
+        window_seconds: i64,
+    ) -> Result<Vec<(i64, SensorData)>, DatabaseError> {
+        let second_query = "SELECT
+                (t.timestamp / (?2 * 1000)) * (?2 * 1000) AS window_start,
+                SUM(COALESCE(d.total_power_watts, 0.0)) / ?2 AS total_power_watts,
+                'second' AS period_type
+             FROM timestamp t
+             JOIN total_data d ON t.id = d.timestamp_id
+             WHERE d.period_type = 'second'
+               AND t.timestamp >= ?1
+               AND t.timestamp < ?3
+             GROUP BY window_start
+             ORDER BY window_start ASC";
+
+        let hour_query = "SELECT
+                (t.timestamp / (?2 * 1000)) * (?2 * 1000) AS window_start,
+                AVG(COALESCE(d.total_power_watts, 0.0)) AS total_power_watts,
+                'hour' AS period_type
+             FROM timestamp t
+             JOIN total_data d ON t.id = d.timestamp_id
+             WHERE d.period_type = 'hour'
+               AND t.timestamp >= ?1
+               AND t.timestamp < ?3
+             GROUP BY window_start
+             ORDER BY window_start ASC";
+
+        let second_rows = self.execute_sensor_query(
+            TotalData::table_name_static(),
+            second_query,
+            params![start_window_start, window_seconds, end_exclusive],
+        )?;
+
+        let hour_rows = self.execute_sensor_query(
+            TotalData::table_name_static(),
+            hour_query,
+            params![start_window_start, window_seconds, end_exclusive],
+        )?;
+
+        let mut second_by_window = HashMap::new();
+        for (window_start, data) in second_rows {
+            second_by_window.insert(window_start, data);
+        }
+
+        let mut hour_by_window = HashMap::new();
+        for (window_start, data) in hour_rows {
+            hour_by_window.insert(window_start, data);
+        }
+
+        let mut filled = Vec::new();
+        let mut current = start_window_start;
+        while current < end_exclusive {
+            let data = if let Some(second_data) = second_by_window.remove(&current) {
+                second_data
+            } else if let Some(hour_data) = hour_by_window.remove(&current) {
+                hour_data
+            } else {
+                SensorData::Total(TotalData {
+                    total_power_watts: 0.0,
+                    period_type: if window_seconds >= 3600 {
+                        "hour".to_string()
+                    } else {
+                        "second".to_string()
+                    },
+                })
+            };
+
+            filled.push((current, data));
+            current += window_seconds * 1000;
+        }
+
+        Ok(filled)
+    }
 }
 
-fn get_avg_columns(table_name: &str, prefix: &str) -> String {
-    dispatch_entry!(table_name, avg_columns_sql(prefix)).unwrap_or_default()
+fn get_windowed_average_columns(table_name: &str, prefix: &str, window_seconds: i64) -> Result<String, DatabaseError> {
+    let columns = dispatch_entry!(table_name, columns_static())
+        .ok_or_else(|| DatabaseError::QueryError(format!("Unknown table for average columns: {}", table_name)))?;
+
+    let aggregated = columns
+        .iter()
+        .map(|(name, _)| {
+            format!(
+                "SUM(COALESCE({}{}, 0.0)) / {} AS {}",
+                prefix, name, window_seconds, name
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    Ok(aggregated)
+}
+
+fn zero_sensor_data(table_name: &str) -> Option<SensorData> {
+    dispatch_entry!(table_name, zero())
+}
+
+fn to_epoch_millis(ts: SystemTime) -> Result<i64, DatabaseError> {
+    Ok(ts.duration_since(SystemTime::UNIX_EPOCH)?.as_millis() as i64)
+}
+
+fn from_epoch_millis(ts_millis: i64) -> SystemTime {
+    SystemTime::UNIX_EPOCH + time::Duration::from_millis(ts_millis as u64)
+}
+
+fn to_system_time_records(records: Vec<(i64, SensorData)>) -> Vec<(SystemTime, SensorData)> {
+    records
+        .into_iter()
+        .map(|(ts_millis, data)| (from_epoch_millis(ts_millis), data))
+        .collect()
+}
+
+fn align_to_window_start(timestamp_ms: i64, window_ms: i64) -> i64 {
+    timestamp_ms - timestamp_ms.rem_euclid(window_ms)
 }
