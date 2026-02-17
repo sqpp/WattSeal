@@ -1,7 +1,6 @@
 #![allow(dead_code, unused_imports)]
 
 pub mod database;
-pub mod process;
 pub mod sensors;
 
 use core::time;
@@ -16,7 +15,6 @@ use adlx::gpu;
 use common::database::purge::averaging_and_purging_data;
 use database::Database;
 use display_info::DisplayInfo;
-use process::get_processes;
 use sensors::{SensorType, create_event_from_sensors, gpu::get_gpu_list};
 use sysinfo::System;
 

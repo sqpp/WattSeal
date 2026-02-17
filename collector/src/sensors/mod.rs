@@ -2,8 +2,8 @@ pub mod cpu;
 pub mod disk;
 pub mod gpu;
 pub mod network;
+pub mod process;
 pub mod ram;
-// pub mod process;
 
 use std::{
     cell::RefCell,
@@ -16,10 +16,9 @@ pub use cpu::CPUSensor;
 pub use disk::DiskSensor;
 pub use gpu::GPUSensor;
 pub use network::NetworkSensor;
+pub use process::get_processes;
 pub use ram::RamSensor;
 use sysinfo::System;
-
-pub use crate::process::get_processes;
 
 pub enum SensorType {
     CPU(CPUSensor),
@@ -81,7 +80,7 @@ pub fn create_event_from_sensors(sensors: &Vec<SensorType>, system: Rc<RefCell<S
                         cpu_usage += cpu.usage_percent.unwrap_or(0.0);
                         nb_cpus += 1;
                     }
-                    
+
                     if let SensorData::GPU(gpu) = &d {
                         gpu_power += power;
                         gpu_usage += gpu.usage_percent.unwrap_or(0.0);
