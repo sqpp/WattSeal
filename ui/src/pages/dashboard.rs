@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use common::{DatabaseEntry, TotalData, generic_name_for_table};
+use common::{DatabaseEntry, TotalData};
 use iced::{
-    Alignment, Element, Length, Padding, Task,
+    Alignment, Element, Length, Padding,
     alignment::{Horizontal, Vertical},
     widget::{Column, Container, Row, Scrollable, Text},
 };
@@ -20,80 +20,26 @@ use crate::{
         text::TextStyle,
     },
     themes::AppTheme,
-    types::TimeRange,
 };
 
-pub struct DashboardPage<'a> {
-    components: HashMap<String, ComponentState<'a>>,
-}
+pub struct DashboardPage;
 
-impl<'a> DashboardPage<'a> {
-    pub fn new(theme: AppTheme, components: Vec<String>) -> (Self, Task<Message>) {
-        let components = components
-            .into_iter()
-            .map(|table_name| {
-                let sensor_type = generic_name_for_table(table_name.as_str())
-                    .map(|s| s.to_string())
-                    .unwrap_or(table_name.clone());
-                (table_name.clone(), ComponentState::new(table_name, sensor_type, theme))
-            })
-            .collect();
-        (
-            Self { components },
-            Task::done(Message::FetchAllChartsData(TimeRange::default())),
-        )
-    }
-
-    pub fn update_theme(&mut self, theme: AppTheme) {
-        for component in self.components.values_mut() {
-            component.update_theme(theme);
-        }
-    }
-
-    pub fn update(&mut self, message: Message) -> Task<Message> {
-        match message {
-            Message::UpdateChartData(data) => {
-                for (timestamp, sensor) in data.iter() {
-                    if let Some(component) = self.components.get_mut(sensor.table_name()) {
-                        component.push_data(*timestamp, sensor);
-                    }
-                }
-            }
-            Message::ChangeChartMetricType(table_name, metric_type) => {
-                if let Some(component) = self.components.get_mut(&table_name) {
-                    component.set_metric_type(metric_type);
-                }
-            }
-            Message::ChangeChartTimeRange(sensor_type, time_range) => {
-                if let Some(component) = self.components.get_mut(&sensor_type) {
-                    return component.update_time_range(time_range);
-                }
-            }
-            Message::ReplaceChartData(table_name, data) => {
-                if let Some(component) = self.components.get_mut(&table_name) {
-                    component.load_history_batch(&data);
-                }
-            }
-            _ => {}
-        }
-        Task::none()
-    }
-
-    pub fn view(&self) -> Element<'_, Message, AppTheme> {
+impl DashboardPage {
+    pub fn view<'a>(&'a self, components: &'a HashMap<String, ComponentState<'a>>) -> Element<'a, Message, AppTheme> {
         let content = Column::new()
             .spacing(SPACING_XLARGE)
             .padding(Padding::from(PADDING_LARGE))
             .width(Length::Fill)
             .height(Length::Fill)
-            .push(self.view_power_summary());
+            .push(self.view_power_summary(components));
 
         let additional_content = Column::new()
             .spacing(SPACING_XLARGE)
             .padding(Padding::from(PADDING_LARGE))
             .width(Length::Fill)
             .height(Length::Fill)
-            .push(self.chart_or_placeholder(None, TotalData::table_name_static(), 300.0, false))
-            .push(self.view_component_cards());
+            .push(self.chart_or_placeholder(components, None, TotalData::table_name_static(), 300.0, false))
+            .push(self.view_component_cards(components));
 
         content
             .push(
@@ -105,10 +51,13 @@ impl<'a> DashboardPage<'a> {
             .into()
     }
 
-    fn view_power_summary(&self) -> Element<'_, Message, AppTheme> {
+    fn view_power_summary<'a>(
+        &'a self,
+        components: &'a HashMap<String, ComponentState<'a>>,
+    ) -> Element<'a, Message, AppTheme> {
         let power_value = format!(
             "{:.1}",
-            self.components
+            components
                 .get(TotalData::table_name_static())
                 .and_then(|c| c.get_latest_reading())
                 .and_then(|data| data.total_power_watts())
@@ -147,11 +96,13 @@ impl<'a> DashboardPage<'a> {
             .into()
     }
 
-    fn view_component_cards(&self) -> Element<'_, Message, AppTheme> {
+    fn view_component_cards<'a>(
+        &'a self,
+        components_map: &'a HashMap<String, ComponentState<'a>>,
+    ) -> Element<'a, Message, AppTheme> {
         let mut column = Column::new().spacing(SPACING_LARGE).width(Length::Fill);
 
-        let mut components: Vec<(&String, &ComponentState<'a>)> = self
-            .components
+        let mut components: Vec<(&String, &ComponentState<'a>)> = components_map
             .iter()
             .filter(|(table_name, _)| *table_name != TotalData::table_name_static())
             .collect();
@@ -204,12 +155,13 @@ impl<'a> DashboardPage<'a> {
 
     fn chart_or_placeholder<'b>(
         &'b self,
+        components: &'b HashMap<String, ComponentState<'b>>,
         title: Option<&'b str>,
         table_name: &str,
         height: f32,
         show_usage: bool,
     ) -> Element<'b, Message, AppTheme> {
-        self.components
+        components
             .get(table_name)
             .map(|c| c.chart_card(title, height, show_usage))
             .unwrap_or_else(|| {
