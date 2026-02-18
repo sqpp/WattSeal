@@ -7,6 +7,7 @@ pub mod ram;
 
 use std::{
     cell::RefCell,
+    collections::HashMap,
     rc::Rc,
     time::{Instant, SystemTime},
 };
@@ -62,13 +63,25 @@ pub fn create_event_from_sensors(sensors: &Vec<SensorType>, system: Rc<RefCell<S
     let (mut gpu_power, mut gpu_usage, mut nb_gpus) = (0.0, 0.0, 0);
 
     let mut total_power = 0.0;
+    let mut proc_gpu_usage = HashMap::new();
     for sensor in sensors {
-        if let SensorType::Total = sensor {
+        match sensor {
+            SensorType::Process | SensorType::Total => continue,
+            SensorType::GPU(gpu_sensor) => {
+                if let Ok(gpu_process_usage) = gpu_sensor.get_process_gpu_usage(
+                    time.duration_since(SystemTime::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs(),
+                ) {
+                    proc_gpu_usage.extend(gpu_process_usage);
+                }
+            }
+            _ => {}
+        }
+        if let SensorType::Total | SensorType::Process = sensor {
             continue;
         }
-        if let SensorType::Process = sensor {
-            continue;
-        }
+
         let sensor_data = sensor.read_full_data();
         match sensor_data {
             Ok(d) => {
@@ -107,6 +120,7 @@ pub fn create_event_from_sensors(sensors: &Vec<SensorType>, system: Rc<RefCell<S
         gpu_usage,
         total_power,
         10,
+        proc_gpu_usage,
     );
     data.push(SensorData::Process(top10_process_data));
 

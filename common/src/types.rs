@@ -72,6 +72,7 @@ pub struct ProcessData {
     pub process_exe_path: Option<String>,
     pub process_usage_watt: f64,
     pub process_cpu_usage: f64,
+    pub process_gpu_usage: Option<f64>,
     pub process_mem_usage: f64,
     pub read_bytes_per_sec: f64,
     pub written_bytes_per_sec: f64,
@@ -306,8 +307,8 @@ impl Display for SensorData {
                 writeln!(f, "Top Processes by CPU Usage:")?;
                 writeln!(
                     f,
-                    "{:<30} {:>10} {:>10} {:>10} {:>15} {:>15} {:>20}",
-                    "App Name", "CPU %", "Mem %", "Power W", "Read MB/s", "Write MB/s", "Subprocesses"
+                    "{:<30} {:>10} {:>10} {:>10} {:>10} {:>15} {:>15} {:>20}",
+                    "App Name", "CPU %", "GPU %", "Mem %", "Power W", "Read MB/s", "Write MB/s", "Subprocesses"
                 )?;
                 for process in processes {
                     write!(f, "{}", process)?;
@@ -322,9 +323,10 @@ impl Display for ProcessData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(
             f,
-            "{:<30} {:>10.2} {:>10.2} {:>10.3} {:>15.2} {:>15.2} {:>20}",
+            "{:<30} {:>10.2} {:>10.2} {:>10.2} {:>10.3} {:>15.2} {:>15.2} {:>20}",
             self.app_name,
             self.process_cpu_usage,
+            self.process_gpu_usage.unwrap_or(0.0),
             self.process_mem_usage,
             self.process_usage_watt,
             self.read_bytes_per_sec / 1_000_000.0,    // Convert to MB/s
@@ -433,6 +435,7 @@ impl Default for ProcessData {
             process_exe_path: None,
             process_usage_watt: 0.0,
             process_cpu_usage: 0.0,
+            process_gpu_usage: None,
             process_mem_usage: 0.0,
             read_bytes_per_sec: 0.0,
             written_bytes_per_sec: 0.0,

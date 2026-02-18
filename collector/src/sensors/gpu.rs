@@ -1,3 +1,5 @@
+use std::{collections::HashMap, hash::Hash};
+
 use windows::{Win32::Graphics::Dxgi::*, core::PCWSTR};
 
 use super::{Sensor, SensorError, SensorType};
@@ -93,6 +95,15 @@ pub fn get_gpu_power_sensor(vendor_id: &str, index: u32) -> Result<SensorType, S
     }
 }
 
+impl GPUSensor {
+    pub fn get_process_gpu_usage(&self, current_timestamp: u64) -> Result<HashMap<u32, f64>, SensorError> {
+        match self {
+            GPUSensor::Nvidia(sensor) => sensor.get_processes_gpu_usage(current_timestamp),
+            GPUSensor::Amd(_) | GPUSensor::Intel(_) => Err(SensorError::NotSupported),
+        }
+    }
+}
+
 mod amd_gpu {
     use std::ops::Index;
 
@@ -154,6 +165,8 @@ mod amd_gpu {
 }
 
 mod nvidia_gpu {
+    use std::{cell::RefCell, collections::HashMap};
+
     use nvml_wrapper::Nvml;
 
     use super::{Sensor, SensorError};
@@ -162,6 +175,7 @@ mod nvidia_gpu {
     pub struct NvidiaGPUSensor {
         nvml: Nvml,
         device_index: u32,
+        last_timestamp: RefCell<u64>,
     }
 
     impl NvidiaGPUSensor {
@@ -174,7 +188,38 @@ mod nvidia_gpu {
             Ok(NvidiaGPUSensor {
                 nvml,
                 device_index: index,
+                last_timestamp: RefCell::new(0),
             })
+        }
+
+        pub fn get_processes_gpu_usage(&self, current_timestamp: u64) -> Result<HashMap<u32, f64>, SensorError> {
+            let mut last_timestamp = self
+                .last_timestamp
+                .try_borrow_mut()
+                .map_err(|_| SensorError::ReadError("Failed to borrow last_timestamp".to_string()))?;
+            if *last_timestamp == 0 {
+                *last_timestamp = current_timestamp;
+                return Ok(HashMap::new());
+            }
+            let device = self
+                .nvml
+                .device_by_index(self.device_index)
+                .map_err(|e| SensorError::ReadError(e.to_string()))?;
+            let processes = device.process_utilization_stats(*last_timestamp);
+            *last_timestamp = current_timestamp;
+            let mut usage_map = HashMap::new();
+            match processes {
+                Ok(procs) => {
+                    for proc in procs {
+                        usage_map.insert(proc.pid, proc.sm_util as f64);
+                    }
+                    Ok(usage_map)
+                }
+                Err(e) => Err(SensorError::ReadError(format!(
+                    "Failed to get process utilization stats: {}",
+                    e
+                ))),
+            }
         }
     }
 
