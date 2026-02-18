@@ -1,4 +1,4 @@
-use std::{cell::RefCell, time::Instant};
+use std::{cell::RefCell, rc::Rc, time::Instant};
 
 use driver::WinRing0Reader;
 use sysinfo::System;
@@ -55,11 +55,11 @@ impl Default for EnergyMeasurement {
 pub struct WindowsCPUSensor {
     measurement_source: MeasurementSource,
     last_energy_measurement: RefCell<EnergyMeasurement>,
-    sys: RefCell<System>,
+    system: Rc<RefCell<System>>,
 }
 
 impl WindowsCPUSensor {
-    pub fn new(vendor_id: &str) -> Self {
+    pub fn new(vendor_id: &str, system: Rc<RefCell<System>>) -> Self {
         let vendor = CPUVendor::from_str(vendor_id);
         let measurement_source = WinRing0Reader::new()
             .map(|ring0_reader| MeasurementSource::MSR(MSRReader::new(ring0_reader, vendor)))
@@ -72,7 +72,7 @@ impl WindowsCPUSensor {
         WindowsCPUSensor {
             measurement_source,
             last_energy_measurement: RefCell::new(last_energy_measurement),
-            sys: RefCell::new(sys),
+            system,
         }
     }
 
@@ -93,12 +93,13 @@ impl WindowsCPUSensor {
     }
 
     fn read_cpu_usage(&self) -> Result<f64, SensorError> {
-        let mut sys = self.sys.borrow_mut();
-        sys.refresh_all();
+        let mut sys = self
+            .system
+            .try_borrow_mut()
+            .map_err(|e| SensorError::ReadError(format!("Failed to borrow system: {}", e)))?;
+        sys.refresh_cpu_usage();
 
-        // Calculate total usage across all CPUs and divide by number of CPUs
-        let total_usage: f32 = sys.cpus().iter().map(|cpu| cpu.cpu_usage()).sum::<f32>() / sys.cpus().len() as f32;
-        Ok(total_usage as f64)
+        Ok(sys.global_cpu_usage() as f64)
     }
 }
 

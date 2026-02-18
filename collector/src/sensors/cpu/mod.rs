@@ -1,6 +1,6 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashSet, rc::Rc};
 
-use windows::Win32::System;
+use sysinfo::System;
 use windows_cpu::WindowsCPUSensor;
 
 use super::{Sensor, SensorError, SensorType};
@@ -41,12 +41,19 @@ impl CPUVendor {
     }
 }
 
-pub fn get_cpu_list(system: Rc<RefCell<sysinfo::System>>) -> Vec<String> {
-    let s = system.borrow_mut();
-    s.cpus().iter().map(|cpu| cpu.brand().to_string()).collect()
+pub fn get_cpu_list(system: Rc<RefCell<System>>) -> Result<Vec<String>, String> {
+    let s = system
+        .try_borrow_mut()
+        .map_err(|e| format!("Failed to borrow system: {}", e))?;
+    Ok(s.cpus()
+        .iter()
+        .map(|cpu| cpu.brand().to_string())
+        .collect::<HashSet<String>>()
+        .into_iter()
+        .collect())
 }
 
-pub fn get_cpu_power_sensor(system: Rc<RefCell<sysinfo::System>>, index: usize) -> Result<SensorType, SensorError> {
+pub fn get_cpu_power_sensor(system: Rc<RefCell<System>>, index: usize) -> Result<SensorType, SensorError> {
     let s = system
         .try_borrow_mut()
         .map_err(|e| SensorError::ReadError(format!("Failed to borrow system: {}", e)))?;
@@ -57,7 +64,10 @@ pub fn get_cpu_power_sensor(system: Rc<RefCell<sysinfo::System>>, index: usize) 
     };
 
     #[cfg(target_os = "windows")]
-    return Ok(SensorType::CPU(CPUSensor::Windows(WindowsCPUSensor::new(vendor_id))));
+    return Ok(SensorType::CPU(CPUSensor::Windows(WindowsCPUSensor::new(
+        vendor_id,
+        system.clone(),
+    ))));
 
     #[cfg(not(target_os = "windows"))]
     return Err(SensorError::NotSupported);
