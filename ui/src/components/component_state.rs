@@ -27,25 +27,25 @@ const SNAPSHOT_AREA_HEIGHT: f32 = 34.0;
 
 type HistoryRef = Rc<RefCell<VecDeque<(DateTime<Local>, f32)>>>;
 
-pub struct ComponentState<'a> {
+pub struct ComponentState {
     table_name: String,
-    sensor_type: String,
+    component_name: String,
     latest_reading: Option<SensorData>,
     power_history: HistoryRef,
     secondary_histories: Vec<HistoryRef>,
-    chart: SensorChart<'a>,
+    chart: SensorChart,
     line_type: LineType,
     time_range: TimeRange,
     metric_type: MetricType,
     show_in_total: bool,
 }
 
-impl<'a> ComponentState<'a> {
-    pub fn new(name: String, sensor_type: String, theme: AppTheme) -> Self {
+impl ComponentState {
+    pub fn new(table_name: String, component_name: String, theme: AppTheme) -> Self {
         let chart = SensorChart::new(theme);
         let mut state = Self {
-            table_name: name,
-            sensor_type,
+            table_name,
+            component_name,
             latest_reading: None,
             chart,
             power_history: Rc::new(RefCell::new(VecDeque::new())),
@@ -61,7 +61,7 @@ impl<'a> ComponentState<'a> {
     }
 
     pub fn name(&self) -> &str {
-        &self.sensor_type
+        &self.component_name
     }
 
     fn current_secondary_values(&self) -> Option<SecondaryValues> {
@@ -173,7 +173,7 @@ impl<'a> ComponentState<'a> {
             .set_y_axis_label_and_unit(self.metric_type.label(), self.metric_type.unit());
         match self.metric_type {
             MetricType::Power => {
-                let legend = self.metric_type.legend(&self.sensor_type);
+                let legend = self.metric_type.legend(&self.component_name);
                 self.chart
                     .add_series(&legend, self.line_type, Some(self.metric_type as usize));
                 self.chart.set_data(&legend, self.power_history.clone());
@@ -181,7 +181,7 @@ impl<'a> ComponentState<'a> {
             _ => {
                 if let Some(secondary_values) = self.current_secondary_values() {
                     for (index, labeled_value) in secondary_values.values.into_iter().enumerate() {
-                        let legend = format!("{} {}", self.sensor_type, labeled_value.label);
+                        let legend = format!("{} {}", self.component_name, labeled_value.label);
                         self.chart
                             .add_series(&legend, self.line_type, Some(index.saturating_add(1)));
                         self.chart.set_data(&legend, self.secondary_histories[index].clone());
@@ -258,7 +258,7 @@ impl<'a> ComponentState<'a> {
             .map(|p| format!("{:.1} W", p))
             .unwrap_or_else(|| "N/A".to_string());
 
-        let title = Text::new(title.unwrap_or(&self.sensor_type))
+        let title = Text::new(title.unwrap_or(&self.component_name))
             .size(FONT_SIZE_SUBTITLE)
             .font(FONT_BOLD);
 

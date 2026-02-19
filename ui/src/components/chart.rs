@@ -221,17 +221,17 @@ impl TooltipData {
     }
 }
 
-pub struct SensorChart<'a> {
+pub struct SensorChart {
     cache: RefCell<Cache>,
-    data: ChartData<'a>,
+    data: ChartData,
     hovered: RefCell<Option<TooltipData>>,
     x_range: Duration,
     y_range: Range,
     y_label_area_size: f32,
-    x_axis_label: &'a str,
-    y_axis_label: &'a str,
-    x_unit: &'a str,
-    y_unit: &'a str,
+    x_axis_label: &'static str,
+    y_axis_label: &'static str,
+    x_unit: &'static str,
+    y_unit: &'static str,
     dynamic_range: bool,
     style: ChartStyle,
 }
@@ -299,14 +299,14 @@ impl TimeSeries {
     }
 }
 
-type ChartData<'a> = HashMap<String, TimeSeries>;
+type ChartData = HashMap<String, TimeSeries>;
 
 fn to_plotters_color(color: iced::Color) -> RGBColor {
     let rgba = color.into_rgba8();
     RGBColor(rgba[0], rgba[1], rgba[2])
 }
 
-impl<'a> SensorChart<'a> {
+impl SensorChart {
     fn clear_cache(&self) {
         if let Ok(cache) = self.cache.try_borrow_mut() {
             cache.clear();
@@ -365,12 +365,12 @@ impl<'a> SensorChart<'a> {
         self.clear_cache();
     }
 
-    pub fn set_x_axis_label_and_unit(&mut self, label: &'a str, unit: &'a str) {
+    pub fn set_x_axis_label_and_unit(&mut self, label: &'static str, unit: &'static str) {
         self.x_axis_label = label;
         self.x_unit = unit;
     }
 
-    pub fn set_y_axis_label_and_unit(&mut self, label: &'a str, unit: &'a str) {
+    pub fn set_y_axis_label_and_unit(&mut self, label: &'static str, unit: &'static str) {
         self.y_axis_label = label;
         self.y_unit = unit;
         self.recalculate_y_label_area_size();
@@ -848,7 +848,7 @@ impl<'a> SensorChart<'a> {
     }
 }
 
-impl<'a> Chart<Message> for SensorChart<'a> {
+impl Chart<Message> for SensorChart {
     type State = ();
 
     fn update(

@@ -25,7 +25,7 @@ use crate::{
 pub struct DashboardPage;
 
 impl DashboardPage {
-    pub fn view<'a>(&'a self, components: &'a HashMap<String, ComponentState<'a>>) -> Element<'a, Message, AppTheme> {
+    pub fn view<'a>(&'a self, components: &'a HashMap<String, ComponentState>) -> Element<'a, Message, AppTheme> {
         let content = Column::new()
             .spacing(SPACING_XLARGE)
             .padding(Padding::from(PADDING_LARGE))
@@ -53,7 +53,7 @@ impl DashboardPage {
 
     fn view_power_summary<'a>(
         &'a self,
-        components: &'a HashMap<String, ComponentState<'a>>,
+        components: &'a HashMap<String, ComponentState>,
     ) -> Element<'a, Message, AppTheme> {
         let power_value = format!(
             "{:.1}",
@@ -98,11 +98,11 @@ impl DashboardPage {
 
     fn view_component_cards<'a>(
         &'a self,
-        components_map: &'a HashMap<String, ComponentState<'a>>,
+        components_map: &'a HashMap<String, ComponentState>,
     ) -> Element<'a, Message, AppTheme> {
         let mut column = Column::new().spacing(SPACING_LARGE).width(Length::Fill);
 
-        let mut components: Vec<(&String, &ComponentState<'a>)> = components_map
+        let mut components: Vec<(&String, &ComponentState)> = components_map
             .iter()
             .filter(|(table_name, _)| *table_name != TotalData::table_name_static())
             .collect();
@@ -153,14 +153,14 @@ impl DashboardPage {
             .into()
     }
 
-    fn chart_or_placeholder<'b>(
-        &'b self,
-        components: &'b HashMap<String, ComponentState<'b>>,
-        title: Option<&'b str>,
+    fn chart_or_placeholder<'a>(
+        &'a self,
+        components: &'a HashMap<String, ComponentState>,
+        title: Option<&'static str>,
         table_name: &str,
         height: f32,
         show_usage: bool,
-    ) -> Element<'b, Message, AppTheme> {
+    ) -> Element<'a, Message, AppTheme> {
         components
             .get(table_name)
             .map(|c| c.chart_card(title, height, show_usage))
