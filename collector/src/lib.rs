@@ -15,7 +15,7 @@ use adlx::gpu;
 use common::database::purge::averaging_and_purging_data;
 use database::Database;
 use display_info::DisplayInfo;
-use sensors::{SensorType, create_event_from_sensors, gpu::get_gpu_list};
+use sensors::{AllTimeData, SensorType, create_event_from_sensors, get_hardware_info, gpu::get_gpu_list};
 use sysinfo::System;
 
 use crate::sensors::{DiskSensor, NetworkSensor, RamSensor};
@@ -23,6 +23,7 @@ use crate::sensors::{DiskSensor, NetworkSensor, RamSensor};
 pub struct CollectorApp {
     database: Database,
     sensors: Vec<SensorType>,
+    all_time_data: AllTimeData,
     iteration: u64,
     system: Rc<RefCell<System>>,
 }
@@ -34,6 +35,7 @@ impl CollectorApp {
         Ok(CollectorApp {
             database,
             sensors: Vec::new(),
+            all_time_data: AllTimeData::new(),
             iteration: 0,
             system: Rc::new(RefCell::new(s)),
         })
@@ -93,12 +95,21 @@ impl CollectorApp {
             .create_tables_if_not_exists(&table_names)
             .map_err(|e| format!("Failed to create database tables: {}", e))?;
         println!("✓ Database initialized");
+
+        println!("\n========== GETTING ALL TIME DATA ==========");
+        // if let Ok(all_time) = database.get_all_time_data() {
+        //     self.all_time_data = all_time;
+        //     println!("✓ All-time data loaded: {:#?}", self.all_time_data);
+        // } else {
+        //     println!("✗ No existing all-time data found, starting fresh.");
+        // }
+
         Ok(())
     }
 
     pub fn run(&mut self) {
         println!("\n========== GATHERING HARDWARE INFORMATION ==========\n");
-        get_info().ok();
+        get_info(self.system.clone()).expect("Failed to gather hardware information");
 
         println!("\n========== PURGING & AVERAGING OLD DATA ==========");
         // averaging data every hour and purge the database until the last X_hours
@@ -111,11 +122,9 @@ impl CollectorApp {
 
         loop {
             let start_time = Instant::now();
-
-            self.iteration += 1;
             println!("\n--- Iteration {} ---", self.iteration);
 
-            let event = create_event_from_sensors(&self.sensors, self.system.clone());
+            let event = create_event_from_sensors(&self.sensors, self.system.clone(), &mut self.all_time_data);
 
             match self.database.insert_event(&event) {
                 Ok(_) => println!("✓ Event data saved to database"),
@@ -131,6 +140,13 @@ impl CollectorApp {
                     println!("{}", sensor_data);
                 }
             }
+
+            self.iteration += 1;
+            println!("{:#?}", self.all_time_data);
+            // self.database
+            //     .update_all_time_data(&self.all_time_data)
+            //     .map_err(|e| format!("Failed to update all-time data: {}", e))
+            //     .unwrap();
 
             // ADJUST SLEEP DURATION TO MAINTAIN 1 SECOND INTERVALS
             let elapsed_time = start_time.elapsed();
@@ -152,12 +168,22 @@ impl CollectorApp {
     }
 }
 
-fn get_info() -> Result<(), String> {
-    // Initialize display information
-    let display_infos = DisplayInfo::all().map_err(|e| format!("Failed to get display information: {}", e))?;
-    for display_info in display_infos {
-        println!("display_info {display_info:?}");
-    }
+fn get_info(system: Rc<RefCell<System>>) -> Result<(), String> {
+    let start = Instant::now();
+
+    let infos = get_hardware_info(system);
+    println!("{:#?}", infos);
+
+    // match serde_json::to_string_pretty(&hardware_info) {
+    //     Ok(json_string) => {
+    //         println!("\n=== JSON Output ===");
+    //         println!("{}", json_string);
+    //     }
+    //     Err(e) => eprintln!("Failed to serialize to JSON: {}", e),
+    // }
+
+    println!("Hardware info time: {:.2?} ms", start.elapsed().as_millis());
+
     Ok(())
 }
 

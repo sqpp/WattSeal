@@ -1,5 +1,7 @@
 use std::{fmt::Display, time::SystemTime};
 
+use serde::{Deserialize, Serialize};
+
 use crate::DatabaseEntry;
 
 #[derive(Debug, Clone)]
@@ -95,6 +97,74 @@ pub enum SensorData {
 pub struct TotalData {
     pub total_power_watts: f64,
     pub period_type: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct HardwareInfo {
+    pub system: SystemInfo,
+    pub cpu: CpuInfo,
+    pub memory: MemoryInfo,
+    pub motherboard: MotherboardInfo,
+    pub gpus: Vec<String>,
+    pub disks: Vec<DiskInfo>,
+    pub displays: Vec<ScreenInfo>,
+    pub battery: BatteryInfo,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SystemInfo {
+    pub os: String,
+    pub hostname: String,
+    pub architecture: String,
+    pub is_virtual_machine: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CpuInfo {
+    pub name: String,
+    pub vendor: String,
+    pub physical_cores: u16,
+    pub logical_cores: u16,
+    pub base_frequency_mhz: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MemoryInfo {
+    pub total_ram_bytes: u64,
+    pub total_swap_bytes: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MotherboardInfo {
+    pub manufacturer: String,
+    pub model: String,
+    pub serial: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DiskInfo {
+    pub name: String,
+    pub mount_point: String,
+    pub file_system: String,
+    pub disk_type: String,
+    pub total_bytes: u64,
+    pub used_bytes: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ScreenInfo {
+    pub model: String,
+    pub resolution: String,
+    pub refresh_rate_hz: u32,
+    pub is_primary: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BatteryInfo {
+    pub present: bool,
+    pub design_capacity_wh: Option<f32>,
+    pub full_charge_capacity_wh: Option<f32>,
+    pub cycle_count: Option<u32>,
 }
 
 #[derive(Default, PartialEq, Clone, Copy, Debug)]
