@@ -1,5 +1,6 @@
 use std::{collections::HashMap, hash::Hash};
 
+use common::types::InitialInfo;
 use windows::{Win32::Graphics::Dxgi::*, core::PCWSTR};
 
 use super::{Sensor, SensorError, SensorType};
@@ -78,6 +79,10 @@ impl Sensor for GPUSensor {
             GPUSensor::Intel(sensor) => sensor.read_full_data()?,
         };
         Ok(data)
+    }
+
+    fn read_initial_info(&self) -> Result<InitialInfo, SensorError> {
+        Ok(InitialInfo::Gpus(get_gpu_list()))
     }
 }
 

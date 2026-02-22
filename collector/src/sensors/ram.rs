@@ -1,5 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
+use common::types::{InitialInfo, MemoryInfo};
+
 use crate::{
     database::{RamData, SensorData},
     sensors::{Sensor, SensorError, System},
@@ -35,5 +37,21 @@ impl Sensor for RamSensor {
             total_power_watts: Some(5.0),
             usage_percent: Some(usage_percent),
         }))
+    }
+
+    fn read_initial_info(&self) -> Result<InitialInfo, SensorError> {
+        let sys = self
+            .system
+            .try_borrow()
+            .map_err(|e| SensorError::ReadError(format!("Failed to borrow system: {}", e)))?;
+        let total_ram = sys.total_memory();
+        let total_swap = sys.total_swap();
+
+        let memory_info = MemoryInfo {
+            total_ram_bytes: total_ram,
+            total_swap_bytes: total_swap,
+        };
+
+        Ok(InitialInfo::Memory(memory_info))
     }
 }

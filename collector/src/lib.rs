@@ -107,9 +107,16 @@ impl CollectorApp {
         Ok(())
     }
 
+    pub fn get_hardware_info(&self) {
+        let start = Instant::now();
+        let info = get_hardware_info(&self.sensors);
+        println!("Hardware info time: {:.2?} ms", start.elapsed().as_millis());
+        println!("{:#?}", info);
+    }
+
     pub fn run(&mut self) {
         println!("\n========== GATHERING HARDWARE INFORMATION ==========\n");
-        get_info(self.system.clone()).expect("Failed to gather hardware information");
+        self.get_hardware_info();
 
         println!("\n========== PURGING & AVERAGING OLD DATA ==========");
         // averaging data every hour and purge the database until the last X_hours
@@ -166,25 +173,6 @@ impl CollectorApp {
             }
         }
     }
-}
-
-fn get_info(system: Rc<RefCell<System>>) -> Result<(), String> {
-    let start = Instant::now();
-
-    let infos = get_hardware_info(system);
-    println!("{:#?}", infos);
-
-    // match serde_json::to_string_pretty(&hardware_info) {
-    //     Ok(json_string) => {
-    //         println!("\n=== JSON Output ===");
-    //         println!("{}", json_string);
-    //     }
-    //     Err(e) => eprintln!("Failed to serialize to JSON: {}", e),
-    // }
-
-    println!("Hardware info time: {:.2?} ms", start.elapsed().as_millis());
-
-    Ok(())
 }
 
 fn check_permissions() -> Result<(), String> {

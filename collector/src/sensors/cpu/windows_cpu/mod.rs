@@ -55,11 +55,10 @@ impl Default for EnergyMeasurement {
 pub struct WindowsCPUSensor {
     measurement_source: MeasurementSource,
     last_energy_measurement: RefCell<EnergyMeasurement>,
-    system: Rc<RefCell<System>>,
 }
 
 impl WindowsCPUSensor {
-    pub fn new(vendor_id: &str, system: Rc<RefCell<System>>) -> Self {
+    pub fn new(vendor_id: &str) -> Self {
         let vendor = CPUVendor::from_str(vendor_id);
         let measurement_source = WinRing0Reader::new()
             .map(|ring0_reader| MeasurementSource::MSR(MSRReader::new(ring0_reader, vendor)))
@@ -72,7 +71,6 @@ impl WindowsCPUSensor {
         WindowsCPUSensor {
             measurement_source,
             last_energy_measurement: RefCell::new(last_energy_measurement),
-            system,
         }
     }
 
@@ -101,29 +99,18 @@ impl WindowsCPUSensor {
             _ => Err(SensorError::NotSupported),
         }
     }
-
-    fn read_cpu_usage(&self) -> Result<f64, SensorError> {
-        let mut sys = self
-            .system
-            .try_borrow_mut()
-            .map_err(|e| SensorError::ReadError(format!("Failed to borrow system: {}", e)))?;
-        sys.refresh_cpu_usage();
-
-        Ok(sys.global_cpu_usage() as f64)
-    }
 }
 
 impl Sensor for WindowsCPUSensor {
     fn read_full_data(&self) -> Result<SensorData, SensorError> {
         let cpu_power_values = self.read_raw_power()?;
-        let usage = self.read_cpu_usage()?;
 
         let data = CPUData {
             total_power_watts: cpu_power_values.pkg,
             pp0_power_watts: cpu_power_values.pp0,
             pp1_power_watts: cpu_power_values.pp1,
             dram_power_watts: cpu_power_values.dram,
-            usage_percent: Some(usage),
+            usage_percent: None,
         };
         Ok(data.into())
     }

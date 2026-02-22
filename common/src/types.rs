@@ -99,19 +99,62 @@ pub struct TotalData {
     pub period_type: String,
 }
 
+pub enum InitialInfo {
+    System(SystemInfo),
+    CPU(CpuInfo),
+    Memory(MemoryInfo),
+    Gpus(Vec<String>),
+    Disks(Vec<DiskInfo>),
+    Displays(Vec<ScreenInfo>),
+    Battery(BatteryInfo),
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HardwareInfo {
     pub system: SystemInfo,
     pub cpu: CpuInfo,
     pub memory: MemoryInfo,
-    pub motherboard: MotherboardInfo,
     pub gpus: Vec<String>,
     pub disks: Vec<DiskInfo>,
     pub displays: Vec<ScreenInfo>,
     pub battery: BatteryInfo,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+impl From<Vec<InitialInfo>> for HardwareInfo {
+    fn from(infos: Vec<InitialInfo>) -> Self {
+        let mut system_info = None;
+        let mut cpu_info = None;
+        let mut memory_info = None;
+        let mut gpu_list = None;
+        let mut disk_infos = None;
+        let mut display_infos = None;
+        let mut battery_info = None;
+
+        for info in infos {
+            match info {
+                InitialInfo::System(sys) => system_info = Some(sys),
+                InitialInfo::CPU(cpu) => cpu_info = Some(cpu),
+                InitialInfo::Memory(mem) => memory_info = Some(mem),
+                InitialInfo::Gpus(gpus) => gpu_list = Some(gpus),
+                InitialInfo::Disks(disks) => disk_infos = Some(disks),
+                InitialInfo::Displays(displays) => display_infos = Some(displays),
+                InitialInfo::Battery(battery) => battery_info = Some(battery),
+            }
+        }
+
+        HardwareInfo {
+            system: system_info.unwrap_or_default(),
+            cpu: cpu_info.unwrap_or_default(),
+            memory: memory_info.unwrap_or_default(),
+            gpus: gpu_list.unwrap_or_default(),
+            disks: disk_infos.unwrap_or_default(),
+            displays: display_infos.unwrap_or_default(),
+            battery: battery_info.unwrap_or_default(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct SystemInfo {
     pub os: String,
     pub hostname: String,
@@ -119,7 +162,7 @@ pub struct SystemInfo {
     pub is_virtual_machine: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct CpuInfo {
     pub name: String,
     pub vendor: String,
@@ -128,20 +171,13 @@ pub struct CpuInfo {
     pub base_frequency_mhz: u64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct MemoryInfo {
     pub total_ram_bytes: u64,
     pub total_swap_bytes: u64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct MotherboardInfo {
-    pub manufacturer: String,
-    pub model: String,
-    pub serial: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct DiskInfo {
     pub name: String,
     pub mount_point: String,
@@ -151,7 +187,7 @@ pub struct DiskInfo {
     pub used_bytes: u64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct ScreenInfo {
     pub model: String,
     pub resolution: String,
@@ -159,7 +195,7 @@ pub struct ScreenInfo {
     pub is_primary: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct BatteryInfo {
     pub present: bool,
     pub design_capacity_wh: Option<f32>,
