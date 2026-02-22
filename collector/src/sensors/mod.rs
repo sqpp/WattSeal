@@ -37,7 +37,6 @@ pub enum SensorType {
     Network(NetworkSensor),
     Process,
     Total,
-    AllTime,
 }
 
 impl Sensor for SensorType {
@@ -50,7 +49,6 @@ impl Sensor for SensorType {
             SensorType::Network(sensor) => sensor.read_full_data(),
             SensorType::Process => Err(SensorError::NotSupported),
             SensorType::Total => Err(SensorError::NotSupported),
-            SensorType::AllTime => Err(SensorError::NotSupported),
         }
     }
 
@@ -60,7 +58,6 @@ impl Sensor for SensorType {
             SensorType::GPU(sensor) => sensor.read_initial_info(),
             SensorType::RAM(sensor) => sensor.read_initial_info(),
             SensorType::Disk(sensor) => sensor.read_initial_info(),
-            SensorType::AllTime => Err(SensorError::NotSupported),
             SensorType::Network(_) => Err(SensorError::NotSupported),
             SensorType::Process => Err(SensorError::NotSupported),
             SensorType::Total => Err(SensorError::NotSupported),
@@ -76,7 +73,6 @@ impl Sensor for SensorType {
             SensorType::RAM(_) => Err(SensorError::NotSupported),
             SensorType::Process => Err(SensorError::NotSupported),
             SensorType::Total => Err(SensorError::NotSupported),
-            SensorType::AllTime => Err(SensorError::NotSupported),
         }
     }
 }
@@ -112,7 +108,7 @@ pub fn create_event_from_sensors(
     let mut proc_gpu_usage = HashMap::new();
     for sensor in sensors {
         match sensor {
-            SensorType::Process | SensorType::Total | SensorType::AllTime => continue,
+            SensorType::Process | SensorType::Total => continue,
             SensorType::GPU(gpu_sensor) => {
                 if let Ok(gpu_process_usage) = gpu_sensor.get_process_gpu_usage(
                     time.duration_since(SystemTime::UNIX_EPOCH)
@@ -124,7 +120,7 @@ pub fn create_event_from_sensors(
             }
             _ => {}
         }
-        if let SensorType::Total | SensorType::Process | SensorType::AllTime = sensor {
+        if let SensorType::Total | SensorType::Process = sensor {
             continue;
         }
 
@@ -157,7 +153,6 @@ pub fn create_event_from_sensors(
     }));
 
     all_time.update(total_power);
-    data.push(SensorData::AllTime(all_time.clone()));
 
     cpu_usage /= nb_cpus.max(1) as f64;
     gpu_usage /= nb_gpus.max(1) as f64;
@@ -185,10 +180,6 @@ pub fn get_hardware_info(sensors: &Vec<SensorType>) -> GeneralData {
     let mut sensors_info: Vec<InitialInfo> = Vec::new();
 
     for sensor in sensors {
-        if matches!(sensor, SensorType::AllTime) {
-            continue;
-        }
-
         tables.push(sensor.table_name().to_string());
 
         if let Ok(name) = sensor.read_name() {

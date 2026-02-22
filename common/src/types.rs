@@ -119,7 +119,6 @@ pub enum SensorData {
     Network(NetworkData),
     Total(TotalData),
     Process(Vec<ProcessData>),
-    AllTime(AllTimeData),
 }
 
 #[derive(Debug, Clone)]
@@ -333,7 +332,6 @@ impl SensorData {
             SensorData::Network(_) => "Network",
             SensorData::Total(_) => "Total",
             SensorData::Process(_) => "Processes",
-            SensorData::AllTime(_) => "AllTime",
         }
     }
 
@@ -346,7 +344,6 @@ impl SensorData {
             SensorData::Disk(_) => DiskData::table_name_static(),
             SensorData::Network(_) => NetworkData::table_name_static(),
             SensorData::Process(_) => ProcessData::table_name_static(),
-            SensorData::AllTime(_) => AllTimeData::table_name_static(),
         }
     }
 
@@ -359,7 +356,6 @@ impl SensorData {
             SensorData::Network(data) => data.total_power_watts,
             SensorData::Total(power) => Some(power.total_power_watts),
             SensorData::Process(_) => None,
-            SensorData::AllTime(data) => Some(data.total_power_watts),
         }
     }
 
@@ -449,11 +445,6 @@ impl Display for SensorData {
                 "Total Power during 1 {}: {:.3} W",
                 total.period_type, total.total_power_watts
             ),
-            SensorData::AllTime(all_time) => writeln!(
-                f,
-                "All-Time Power over {} seconds: {:.3} W",
-                all_time.duration_seconds, all_time.total_power_watts
-            ),
             SensorData::Process(processes) => {
                 writeln!(f, "Top Processes by CPU Usage:")?;
                 writeln!(
@@ -525,12 +516,6 @@ impl From<NetworkData> for SensorData {
 impl From<ProcessData> for SensorData {
     fn from(data: ProcessData) -> Self {
         SensorData::Process(vec![data])
-    }
-}
-
-impl From<AllTimeData> for SensorData {
-    fn from(data: AllTimeData) -> Self {
-        SensorData::AllTime(data)
     }
 }
 

@@ -8,9 +8,10 @@ pub use entries::DatabaseEntry;
 pub use purge::averaging_and_purging_data;
 use rusqlite::{Connection, OptionalExtension, Row, Transaction, params};
 
-use crate::{types::{
-    CPUData, DiskData, Event, GPUData, GeneralData, NetworkData, ProcessData, RamData, SensorData, TotalData,
-}, AllTimeData};
+use crate::{
+    AllTimeData,
+    types::{CPUData, DiskData, Event, GPUData, GeneralData, NetworkData, ProcessData, RamData, SensorData, TotalData},
+};
 
 pub static DATABASE_PATH: &str = "power_monitoring.db";
 
@@ -22,7 +23,6 @@ macro_rules! dispatch_entry {
         else if $table_name == DiskData::table_name_static() { Some(DiskData::$method($($arg),*)) }
         else if $table_name == NetworkData::table_name_static() { Some(NetworkData::$method($($arg),*)) }
         else if $table_name == TotalData::table_name_static() { Some(TotalData::$method($($arg),*)) }
-        else if $table_name == AllTimeData::table_name_static() { Some(AllTimeData::$method($($arg),*)) }
         else if $table_name == ProcessData::table_name_static() { Some(ProcessData::$method($($arg),*)) }
         else { None }
     }};
@@ -103,6 +103,15 @@ impl Database {
             [],
         )?;
 
+        tx.execute(
+            "CREATE TABLE IF NOT EXISTS all_time_data (
+                    id                 INTEGER PRIMARY KEY,
+                    total_power_watts  REAL,
+                    duration_seconds   INTEGER
+            )",
+            [],
+        )?;
+
         let mut current_tables = self.tables.clone().unwrap_or_default();
         let mut has_changed = false;
         for &name in table_names {
@@ -114,10 +123,9 @@ impl Database {
                 }
             }
         }
-        if !has_changed {
-            return Ok(());
+        if has_changed {
+            self.tables = Some(current_tables);
         }
-        self.tables = Some(current_tables);
         tx.commit()?;
         Ok(())
     }
@@ -155,6 +163,26 @@ impl Database {
         Ok(())
     }
 
+    pub fn update_all_time_data(&mut self, data: &AllTimeData) -> Result<(), DatabaseError> {
+        let tx = self.conn.transaction()?;
+        let updated_rows = tx.execute(
+            "UPDATE all_time_data
+                 SET total_power_watts = ?1,
+                     duration_seconds = ?2
+             WHERE id = (SELECT id FROM all_time_data ORDER BY id DESC LIMIT 1)",
+            params![data.total_power_watts, data.duration_seconds],
+        )?;
+
+        if updated_rows == 0 {
+            tx.execute(
+                "INSERT INTO all_time_data (total_power_watts, duration_seconds) VALUES (?1, ?2)",
+                params![data.total_power_watts, data.duration_seconds],
+            )?;
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
     fn insert_sensor_data(tx: &Transaction, timestamp_id: &i64, sensor_data: &SensorData) -> Result<(), DatabaseError> {
         match sensor_data {
             SensorData::CPU(data) => Self::insert_entry(tx, timestamp_id, data),
@@ -163,7 +191,6 @@ impl Database {
             SensorData::Disk(data) => Self::insert_entry(tx, timestamp_id, data),
             SensorData::Network(data) => Self::insert_entry(tx, timestamp_id, data),
             SensorData::Total(data) => Self::insert_entry(tx, timestamp_id, data),
-            SensorData::AllTime(data) => Self::insert_entry(tx, timestamp_id, data),
             SensorData::Process(processes) => {
                 for process in processes {
                     Self::insert_entry(tx, timestamp_id, process)?;
@@ -289,7 +316,7 @@ impl Database {
 
     // Fetch the last record of the all_time_data table if it exists
     pub fn get_all_time_data(&mut self) -> Result<AllTimeData, DatabaseError> {
-        let query = "SELECT t.timestamp, d.* FROM timestamp t JOIN all_time_data d ON t.id = d.timestamp_id ORDER BY t.timestamp DESC LIMIT 1";
+        let query = "SELECT * FROM all_time_data ORDER BY id DESC LIMIT 1";
         let mut stmt = self.conn.prepare(query)?;
         let result = stmt.query_row([], |row| {
             let data = AllTimeData::from_row(row)?;

@@ -12,7 +12,6 @@ impl SensorType {
             SensorType::Disk(_) => DiskData::table_name_static(),
             SensorType::Network(_) => NetworkData::table_name_static(),
             SensorType::Total => TotalData::table_name_static(),
-            SensorType::AllTime => AllTimeData::table_name_static(),
             SensorType::Process => ProcessData::table_name_static(),
         }
     }

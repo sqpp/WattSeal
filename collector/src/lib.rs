@@ -84,8 +84,6 @@ impl CollectorApp {
         self.sensors.push(SensorType::Total);
         // Add process sensor
         self.sensors.push(SensorType::Process);
-        // Add all-time data sensor
-        self.sensors.push(SensorType::AllTime);
 
         println!("\n========== SETTING UP DATABASE ==========");
         // Initialize database
@@ -131,6 +129,12 @@ impl CollectorApp {
                 Ok(_) => println!("✓ Event data saved to database"),
                 Err(e) => eprintln!("✗ Failed to save event data: {:?}", e),
             }
+
+            match self.database.update_all_time_data(&self.all_time_data) {
+                Ok(_) => println!("✓ All time data updated in database"),
+                Err(e) => eprintln!("✗ Failed to update All time data: {:?}", e),
+            }
+
             for sensor_data in event.data().iter() {
                 // PRINT HARDWARE DATA
                 if !(sensor_data.sensor_type() == "Processes") {
@@ -143,6 +147,10 @@ impl CollectorApp {
             }
 
             self.iteration += 1;
+            println!(
+                "All-Time Power over {} seconds: {:.3} W",
+                self.all_time_data.duration_seconds, self.all_time_data.total_power_watts
+            );
 
             // ADJUST SLEEP DURATION TO MAINTAIN 1 SECOND INTERVALS
             let elapsed_time = start_time.elapsed();

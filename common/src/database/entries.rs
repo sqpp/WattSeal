@@ -333,8 +333,17 @@ impl DatabaseEntry for AllTimeData {
         "all_time_data"
     }
 
-    fn insert_params<'a>(&'a self, timestamp_id: &'a i64) -> Vec<&'a dyn ToSql> {
-        vec![timestamp_id, &self.total_power_watts, &self.duration_seconds]
+    fn insert_params<'a>(&'a self, _timestamp_id: &'a i64) -> Vec<&'a dyn ToSql> {
+        vec![&self.total_power_watts, &self.duration_seconds]
+    }
+
+    fn insert_sql() -> String {
+        "INSERT INTO all_time_data (total_power_watts, duration_seconds) VALUES (?1, ?2)".to_string()
+    }
+
+    fn create_table_sql() -> String {
+        "CREATE TABLE IF NOT EXISTS all_time_data (id INTEGER PRIMARY KEY, total_power_watts REAL, duration_seconds INTEGER)"
+            .to_string()
     }
 
     fn columns_static() -> &'static [(&'static str, &'static str)] {
@@ -423,15 +432,6 @@ mod tests {
                 assert!(vec.is_empty());
             }
             _ => panic!("ProcessData::zero() returned wrong SensorData variant"),
-        }
-
-        // AllTime
-        match AllTimeData::zero() {
-            SensorData::AllTime(all_time) => {
-                assert_eq!(all_time.total_power_watts, 0.0);
-                assert_eq!(all_time.duration_seconds, 0);
-            }
-            _ => panic!("AllTimeData::zero() returned wrong SensorData variant"),
         }
     }
 }
