@@ -80,6 +80,21 @@ impl Sensor for DiskSensor {
         }
         Ok(InitialInfo::Disks(disk_infos))
     }
+
+    fn read_name(&self) -> Result<String, SensorError> {
+        let disks = self
+            .disks
+            .try_borrow()
+            .map_err(|e| SensorError::ReadError(format!("Failed to borrow disks: {}", e)))?;
+
+        let names: Vec<String> = disks
+            .list()
+            .iter()
+            .map(|disk| disk.name().to_string_lossy().to_string())
+            .collect();
+
+        Ok(format!("Disk(s): [{}]", names.join(", ")))
+    }
 }
 
 fn disk_kind_label(kind: &sysinfo::Disk) -> &'static str {

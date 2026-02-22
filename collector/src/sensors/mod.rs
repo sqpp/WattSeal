@@ -61,11 +61,26 @@ impl Sensor for SensorType {
             SensorType::Total => Err(SensorError::NotSupported),
         }
     }
+
+    fn read_name(&self) -> Result<String, SensorError> {
+        match self {
+            SensorType::CPU(sensor) => sensor.read_name(),
+            SensorType::GPU(sensor) => sensor.read_name(),
+            SensorType::Disk(sensor) => sensor.read_name(),
+            SensorType::Network(sensor) => sensor.read_name(),
+            SensorType::RAM(_) => Err(SensorError::NotSupported),
+            SensorType::Process => Err(SensorError::NotSupported),
+            SensorType::Total => Err(SensorError::NotSupported),
+        }
+    }
 }
 
 pub trait Sensor {
     fn read_full_data(&self) -> Result<SensorData, SensorError>;
     fn read_initial_info(&self) -> Result<InitialInfo, SensorError> {
+        Err(SensorError::NotSupported)
+    }
+    fn read_name(&self) -> Result<String, SensorError> {
         Err(SensorError::NotSupported)
     }
 }
@@ -157,11 +172,23 @@ pub fn create_event_from_sensors(
     return Event::new(time, data);
 }
 
-pub fn get_hardware_info(sensors: &Vec<SensorType>) -> HardwareInfo {
-    let mut sensors_info = sensors
-        .iter()
-        .filter_map(|s| s.read_initial_info().ok())
-        .collect::<Vec<InitialInfo>>();
+pub fn get_hardware_info(sensors: &Vec<SensorType>) -> (Vec<String>, HardwareInfo) {
+    let mut detected_materials: Vec<String> = Vec::new();
+    let mut sensors_info: Vec<InitialInfo> = Vec::new();
+
+    for sensor in sensors {
+        if let Ok(info) = sensor.read_initial_info() {
+            sensors_info.push(info);
+        } else {
+            eprintln!("✗ Failed to read initial info for sensor: {:?}", sensor.table_name());
+        }
+
+        if let Ok(name) = sensor.read_name() {
+            detected_materials.push(name);
+        } else {
+            eprintln!("✗ No name available for sensor: {:?}", sensor.table_name());
+        }
+    }
 
     // System information
     let os_name = format!(
@@ -182,33 +209,43 @@ pub fn get_hardware_info(sensors: &Vec<SensorType>) -> HardwareInfo {
 
     // Display info
     let display_infos = DisplayInfo::all().unwrap_or_default();
+    let mut display_names = Vec::new();
     let mut screen_infos = Vec::new();
     for display_info in display_infos {
         let resolution = format!("{}x{}", display_info.width, display_info.height);
-
+        let friendly_name = display_info.friendly_name.clone();
+        display_names.push(friendly_name.clone());
         screen_infos.push(ScreenInfo {
-            model: display_info.friendly_name,
+            model: friendly_name,
             resolution: resolution,
             refresh_rate_hz: display_info.frequency as u32,
             is_primary: display_info.is_primary,
         });
     }
+    detected_materials.push(format!("Display(s): [{}]", display_names.join(", ")));
     sensors_info.push(InitialInfo::Displays(screen_infos));
 
     // Battery info
     let battery_info = BatteryInfo {
         present: false,
+        name: None,
         design_capacity_wh: None,
         full_charge_capacity_wh: None,
         cycle_count: None,
     };
 
+    let mut battery_names: Vec<String> = Vec::new();
     let manager = Manager::new().unwrap();
     let battery_info = match manager.batteries() {
         Ok(mut batteries) => {
             if let Some(Ok(battery)) = batteries.next() {
+                let battery_name = battery.vendor().map(|v| v.to_string());
+                if let Some(ref name) = battery_name {
+                    battery_names.push(name.clone());
+                }
                 BatteryInfo {
                     present: true,
+                    name: battery_name,
                     design_capacity_wh: Some(battery.energy_full_design().get::<battery::units::energy::watt_hour>()),
                     full_charge_capacity_wh: Some(battery.energy_full().get::<battery::units::energy::watt_hour>()),
                     cycle_count: battery.cycle_count(),
@@ -219,10 +256,11 @@ pub fn get_hardware_info(sensors: &Vec<SensorType>) -> HardwareInfo {
         }
         Err(_) => battery_info,
     };
+    detected_materials.push(format!("Battery(s): [{}]", battery_names.join(", ")));
     sensors_info.push(InitialInfo::Battery(battery_info));
+    let hardware_info = sensors_info.into();
 
-    // Return the HardwareInfo structure
-    return sensors_info.into();
+    return (detected_materials, hardware_info);
 }
 
 fn disk_kind_label(kind: &sysinfo::Disk) -> &'static str {

@@ -66,6 +66,18 @@ impl Sensor for CPUSensor {
             physical_cores,
         }))
     }
+
+    fn read_name(&self) -> Result<String, SensorError> {
+        let sys = self
+            .system
+            .try_borrow()
+            .map_err(|e| SensorError::ReadError(format!("Failed to borrow system: {}", e)))?;
+        let cpu_name = sys
+            .cpus()
+            .first()
+            .map(|cpu| cpu.brand().to_string());
+        Ok(format!("Cpu: {}",cpu_name.unwrap_or_else(|| "Unknown CPU".to_string())))
+    }
 }
 
 #[derive(Copy, Clone, PartialEq)]

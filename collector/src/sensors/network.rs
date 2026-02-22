@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::{cell::RefCell, fmt::format};
 
 use sysinfo::Networks;
 
@@ -40,5 +40,16 @@ impl Sensor for NetworkSensor {
             download_speed_mb_s,
             upload_speed_mb_s,
         }))
+    }
+
+    fn read_name(&self) -> Result<String, SensorError> {
+        let mut networks = self
+            .networks
+            .try_borrow_mut()
+            .map_err(|e| SensorError::ReadError(format!("Failed to borrow networks: {}", e)))?;
+        networks.refresh(true);
+        let names: Vec<String> = networks.iter().map(|(name, _)| name.clone()).collect();
+
+        Ok(format!("Network(s): [{}]", names.join(", ")))
     }
 }

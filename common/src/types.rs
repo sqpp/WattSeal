@@ -109,6 +109,12 @@ pub enum InitialInfo {
     Battery(BatteryInfo),
 }
 
+#[derive(Debug, Clone)]
+pub struct GeneralData {
+    pub detected_hardware: Vec<String>,
+    pub hardware_info_serialized: String,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HardwareInfo {
     pub system: SystemInfo,
@@ -198,6 +204,7 @@ pub struct ScreenInfo {
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct BatteryInfo {
     pub present: bool,
+    pub name: Option<String>,
     pub design_capacity_wh: Option<f32>,
     pub full_charge_capacity_wh: Option<f32>,
     pub cycle_count: Option<u32>,

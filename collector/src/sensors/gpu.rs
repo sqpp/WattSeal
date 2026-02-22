@@ -84,6 +84,10 @@ impl Sensor for GPUSensor {
     fn read_initial_info(&self) -> Result<InitialInfo, SensorError> {
         Ok(InitialInfo::Gpus(get_gpu_list()))
     }
+
+    fn read_name(&self) -> Result<String, SensorError> {
+        Ok(format!("Gpu(s): [{}]", get_gpu_list().join(", ").to_string()))
+    }
 }
 
 pub fn get_gpu_power_sensor(vendor_id: &str, index: u32) -> Result<SensorType, SensorError> {
