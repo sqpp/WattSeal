@@ -258,53 +258,45 @@ mod nvidia_gpu {
 }
 
 mod intel_gpu {
-    use std::time::Duration;
+    use std::slice;
 
     use windows::{
         Win32::System::Performance::{
-            PDH_FMT_COUNTERVALUE, PDH_FMT_DOUBLE, PdhAddCounterW, PdhCloseQuery, PdhCollectQueryData,
-            PdhGetFormattedCounterValue, PdhOpenQueryW,
+            PDH_FMT_COUNTERVALUE_ITEM_W, PDH_FMT_DOUBLE, PdhAddEnglishCounterW, PdhCloseQuery, PdhCollectQueryData,
+            PdhGetFormattedCounterArrayW, PdhOpenQueryW,
         },
-        core::HSTRING,
+        core::PCWSTR,
     };
 
     use super::{Sensor, SensorError};
     use crate::database::{GPUData, SensorData};
 
+    const PDH_MORE_DATA: u32 = 0x800007D2;
+
     pub struct IntelGPUSensor {
-        adapter_index: u32,
         query: isize,
         counter: isize,
+        initialized: std::cell::Cell<bool>,
     }
 
     impl IntelGPUSensor {
-        pub fn new(index: u32) -> Result<Self, SensorError> {
+        pub fn new(_index: u32) -> Result<Self, SensorError> {
             unsafe {
                 let mut query: isize = 0;
-                PdhOpenQueryW(None, 0, &mut query);
-
-                // Try to find Intel GPU counter
-                let counter_path = HSTRING::from(r"\GPU Engine(*engtype_3D)\Utilization Percentage");
+                if PdhOpenQueryW(None, 0, &mut query) != 0 {
+                    return Err(SensorError::ReadError("PdhOpenQuery failed".to_string()));
+                }
+                let path: Vec<u16> = "\\GPU Engine(*)\\Utilization Percentage\0".encode_utf16().collect();
                 let mut counter: isize = 0;
-
-                PdhAddCounterW(query, &counter_path, 0, &mut counter);
-
+                if PdhAddEnglishCounterW(query, PCWSTR(path.as_ptr()), 0, &mut counter) != 0 {
+                    let _ = PdhCloseQuery(query);
+                    return Err(SensorError::ReadError("PdhAddEnglishCounter failed".to_string()));
+                }
                 Ok(IntelGPUSensor {
-                    adapter_index: index,
                     query,
                     counter,
+                    initialized: std::cell::Cell::new(false),
                 })
-            }
-        }
-
-        fn read_counter(&self) -> Result<f64, SensorError> {
-            unsafe {
-                PdhCollectQueryData(self.query);
-
-                let mut value = PDH_FMT_COUNTERVALUE::default();
-                PdhGetFormattedCounterValue(self.counter, PDH_FMT_DOUBLE, None, &mut value);
-
-                Ok(value.Anonymous.doubleValue)
             }
         }
     }
@@ -319,48 +311,48 @@ mod intel_gpu {
 
     impl Sensor for IntelGPUSensor {
         fn read_full_data(&self) -> Result<SensorData, SensorError> {
-            // First collection initializes the counter
-            let _ = self.read_counter();
-            // Second collection gets actual value
-            let usage_percent = self.read_counter()?;
-
-            let data = GPUData {
-                total_power_watts: None,
-                usage_percent: Some(usage_percent.clamp(0.0, 100.0)),
-                vram_usage_percent: None,
-            };
-
-            Ok(data.into())
+            unsafe {
+                PdhCollectQueryData(self.query);
+                if !self.initialized.get() {
+                    self.initialized.set(true);
+                    PdhCollectQueryData(self.query);
+                }
+                let (mut size, mut count) = (0u32, 0u32);
+                if PdhGetFormattedCounterArrayW(self.counter, PDH_FMT_DOUBLE, &mut size, &mut count, None)
+                    != PDH_MORE_DATA
+                {
+                    return Ok(GPUData {
+                        total_power_watts: None,
+                        usage_percent: Some(0.0),
+                        vram_usage_percent: None,
+                    }
+                    .into());
+                }
+                let mut buf = vec![0u8; size as usize];
+                let items = buf.as_mut_ptr() as *mut PDH_FMT_COUNTERVALUE_ITEM_W;
+                if PdhGetFormattedCounterArrayW(self.counter, PDH_FMT_DOUBLE, &mut size, &mut count, Some(items)) != 0 {
+                    return Ok(GPUData {
+                        total_power_watts: None,
+                        usage_percent: Some(0.0),
+                        vram_usage_percent: None,
+                    }
+                    .into());
+                }
+                let max = slice::from_raw_parts(items, count as usize)
+                    .iter()
+                    .filter(|i| i.FmtValue.CStatus == 0)
+                    .filter_map(|i| {
+                        let v = i.FmtValue.Anonymous.doubleValue;
+                        v.is_finite().then_some(v)
+                    })
+                    .fold(0.0f64, f64::max);
+                Ok(GPUData {
+                    total_power_watts: None,
+                    usage_percent: Some(max.clamp(0.0, 100.0)),
+                    vram_usage_percent: None,
+                }
+                .into())
+            }
         }
     }
 }
-
-// mod intel_gpu {
-//     use super::{Sensor, SensorError};
-//     use crate::database::{GPUData, SensorData};
-
-//     pub struct IntelGPUSensor {
-//         index: u32,
-//     }
-
-//     impl IntelGPUSensor {
-//         pub fn new(index: u32) -> Result<Self, SensorError> {
-//             // Initialize Intel GPU sensor here
-//             Ok(IntelGPUSensor { index })
-//         }
-//     }
-
-//     impl Sensor for IntelGPUSensor {
-//         fn read_full_data(&self) -> Result<SensorData, SensorError> {
-//             // Read Intel GPU data here
-//             // Placeholder implementation
-//             let data = GPUData {
-//                 total_power_watts: None,
-//                 usage_percent: None,
-//                 vram_usage_percent: None,
-//             };
-
-//             Ok(data.into())
-//         }
-//     }
-// }
