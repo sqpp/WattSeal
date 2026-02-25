@@ -204,7 +204,6 @@ impl From<Vec<InitialInfo>> for HardwareInfo {
 pub struct SystemInfo {
     pub os: String,
     pub hostname: String,
-    pub architecture: String,
     pub is_virtual_machine: bool,
 }
 
@@ -215,6 +214,7 @@ pub struct CpuInfo {
     pub physical_cores: u16,
     pub logical_cores: u16,
     pub base_frequency_mhz: u64,
+    pub architecture: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]

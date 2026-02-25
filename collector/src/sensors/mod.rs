@@ -200,12 +200,10 @@ pub fn get_hardware_info(sensors: &Vec<SensorType>) -> GeneralData {
         System::os_version().unwrap_or_default()
     );
     let hostname = System::host_name().unwrap_or_default();
-    let architecture = System::cpu_arch();
 
     let system_info = SystemInfo {
         os: os_name,
         hostname,
-        architecture,
         is_virtual_machine: false,
     };
     sensors_info.push(InitialInfo::System(system_info));

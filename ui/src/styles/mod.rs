@@ -4,5 +4,6 @@ pub mod container;
 pub mod picklist;
 pub mod scrollable;
 pub mod style_constants;
+pub mod svg;
 pub mod text;
 pub mod toggler;

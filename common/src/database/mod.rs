@@ -176,6 +176,19 @@ impl Database {
         Ok(())
     }
 
+    pub fn get_hardware_info(&self) -> Result<HardwareInfo, DatabaseError> {
+        let query = "SELECT hardware_data FROM hardware_info WHERE id = 1";
+        let mut stmt = self.conn.prepare(query)?;
+        let result = stmt.query_row([], |row| {
+            let hardware_info_serialized: String = row.get(0)?;
+            let hardware_info: HardwareInfo = serde_json::from_str(&hardware_info_serialized)
+                .map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))?;
+            Ok(hardware_info)
+        })?;
+
+        Ok(result)
+    }
+
     pub fn update_all_time_data(&mut self, data: &AllTimeData) -> Result<(), DatabaseError> {
         let tx = self.conn.transaction()?;
         let updated_rows = tx.execute(

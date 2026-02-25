@@ -1,7 +1,9 @@
 use std::{collections::HashMap, os::windows::process, time::SystemTime};
 
 use chrono::{DateTime, Local};
-use common::{Database, DatabaseError, GPUData, ProcessData, SensorData, generic_name_for_table};
+use common::{
+    Database, DatabaseEntry, DatabaseError, GPUData, HardwareInfo, ProcessData, SensorData, generic_name_for_table,
+};
 use iced::{
     Element, Subscription, Task,
     time::{Duration, every},
@@ -21,6 +23,7 @@ const FPS: u64 = 1;
 pub struct App {
     current_page: Page,
     sensors: HashMap<String, SensorState>,
+    hardware_info: HardwareInfo,
     dashboard_page: DashboardPage,
     info_page: InfoPage,
     optimization_page: OptimizationPage,
@@ -45,6 +48,7 @@ impl App {
                 (table_name.clone(), SensorState::new(table_name, display_name, theme))
             })
             .collect();
+        let hardware_info = database.get_hardware_info().unwrap_or_default();
         let dashboard_page = DashboardPage;
         let task = Task::done(Message::FetchAllChartsData(TimeRange::default()));
 
@@ -59,6 +63,7 @@ impl App {
                 settings_page: SettingsPage::new(),
                 theme,
                 database,
+                hardware_info,
             },
             task,
         )
@@ -134,11 +139,8 @@ impl App {
         }
     }
 
-    fn load_all_charts_history(&mut self, time_range: TimeRange) -> Vec<(DateTime<Local>, SensorData)> {
-        normalize_integrated_cpu(from_db(
-            self.database
-                .select_all_data_in_time_range(time_range.start_time().into(), time_range.end_time().into()),
-        ))
+    fn get_hardware_info(&mut self) -> Result<HardwareInfo, DatabaseError> {
+        self.database.get_hardware_info()
     }
 
     fn load_latest_data(&mut self, n: i64) -> Vec<(DateTime<Local>, SensorData)> {
@@ -172,7 +174,7 @@ impl App {
     pub fn view(&self) -> Element<'_, Message, AppTheme> {
         let page_content = match self.current_page {
             Page::Dashboard => self.dashboard_page.view(&self.sensors),
-            Page::Info => self.info_page.view(),
+            Page::Info => self.info_page.view(&self.hardware_info, self.theme),
             Page::Optimization => self.optimization_page.view(),
             Page::Settings => self.settings_page.view(),
         };

@@ -57,6 +57,7 @@ impl Sensor for CPUSensor {
             .map(|cpu| cpu.vendor_id().to_string())
             .unwrap_or_else(|| "Unknown".to_string());
         let cpu_frequency = sys.cpus().first().map(|c| c.frequency()).unwrap_or(0);
+        let architecture = System::cpu_arch();
 
         Ok(InitialInfo::CPU(CpuInfo {
             name: cpu_name,
@@ -64,6 +65,7 @@ impl Sensor for CPUSensor {
             base_frequency_mhz: cpu_frequency,
             logical_cores,
             physical_cores,
+            architecture,
         }))
     }
 

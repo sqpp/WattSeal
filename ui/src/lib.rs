@@ -4,6 +4,7 @@ use iced::font::Font;
 
 pub mod app;
 pub mod components;
+pub mod icons;
 pub mod message;
 pub mod pages;
 pub mod styles;

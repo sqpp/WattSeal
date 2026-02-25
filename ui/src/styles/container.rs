@@ -17,6 +17,7 @@ pub enum ContainerStyle {
     Header,
     PowerCard,
     ComponentCard,
+    IconBadge(Color),
 }
 
 impl Catalog for AppTheme {
@@ -81,6 +82,16 @@ impl Catalog for AppTheme {
                 },
                 text_color: Some(ext.text),
                 shadow: Shadow::default(),
+                ..Default::default()
+            },
+
+            ContainerStyle::IconBadge(accent) => container::Style {
+                background: Some(Background::Color(with_alpha(*accent, 0.15))),
+                border: Border {
+                    color: with_alpha(*accent, 0.3),
+                    width: BORDER_WIDTH,
+                    radius: BORDER_RADIUS_MEDIUM.into(),
+                },
                 ..Default::default()
             },
         }
