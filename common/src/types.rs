@@ -100,7 +100,7 @@ pub struct NetworkData {
 pub struct ProcessData {
     pub app_name: String,
     pub process_exe_path: Option<String>,
-    pub process_usage_watt: f64,
+    pub process_power_watts: f64,
     pub process_cpu_usage: f64,
     pub process_gpu_usage: Option<f64>,
     pub process_mem_usage: f64,
@@ -481,7 +481,7 @@ impl Display for ProcessData {
             self.process_cpu_usage,
             self.process_gpu_usage.unwrap_or(0.0),
             self.process_mem_usage,
-            self.process_usage_watt,
+            self.process_power_watts,
             self.read_bytes_per_sec / 1_000_000.0,    // Convert to MB/s
             self.written_bytes_per_sec / 1_000_000.0, // Convert to MB/s
             self.subprocess_count
@@ -586,7 +586,7 @@ impl Default for ProcessData {
         ProcessData {
             app_name: String::new(),
             process_exe_path: None,
-            process_usage_watt: 0.0,
+            process_power_watts: 0.0,
             process_cpu_usage: 0.0,
             process_gpu_usage: None,
             process_mem_usage: 0.0,

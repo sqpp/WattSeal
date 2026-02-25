@@ -274,7 +274,7 @@ impl DatabaseEntry for ProcessData {
             timestamp_id,
             &self.app_name,
             &self.process_exe_path,
-            &self.process_usage_watt,
+            &self.process_power_watts,
             &self.process_cpu_usage,
             &self.process_gpu_usage,
             &self.process_mem_usage,
@@ -288,7 +288,7 @@ impl DatabaseEntry for ProcessData {
         &[
             ("app_name", "TEXT NOT NULL"),
             ("process_exe_path", "TEXT"),
-            ("process_usage_watt", "REAL"),
+            ("process_power_watts", "REAL"),
             ("process_cpu_usage", "REAL"),
             ("process_gpu_usage", "REAL"),
             ("process_mem_usage", "REAL"),
@@ -302,7 +302,7 @@ impl DatabaseEntry for ProcessData {
         let proc = ProcessData {
             app_name: row.get("app_name")?,
             process_exe_path: row.get("process_exe_path")?,
-            process_usage_watt: row.get("process_usage_watt")?,
+            process_power_watts: row.get("process_power_watts")?,
             process_cpu_usage: row.get("process_cpu_usage")?,
             process_gpu_usage: row.get("process_gpu_usage")?,
             process_mem_usage: row.get("process_mem_usage")?,

@@ -51,8 +51,8 @@ pub fn get_processes(
         proc_gpu_usage,
     );
     processes.sort_by(|a, b| {
-        b.process_usage_watt
-            .partial_cmp(&a.process_usage_watt)
+        b.process_power_watts
+            .partial_cmp(&a.process_power_watts)
             .unwrap_or(std::cmp::Ordering::Equal)
     });
 
@@ -111,7 +111,7 @@ fn extract_and_group_processes(
         if entry.app_name.is_empty() {
             entry.app_name = name;
         }
-        entry.process_usage_watt += process_power;
+        entry.process_power_watts += process_power;
         entry.process_cpu_usage += process_cpu_usage;
         if let Some(gpu_usage) = process_gpu_usage {
             match entry.process_gpu_usage {
