@@ -262,7 +262,7 @@ impl DatabaseEntry for TotalData {
 
 impl DatabaseEntry for ProcessData {
     fn generic_name() -> &'static str {
-        "Process"
+        "Processes"
     }
 
     fn table_name_static() -> &'static str {

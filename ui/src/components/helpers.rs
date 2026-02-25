@@ -8,7 +8,10 @@ use iced::{
 
 use crate::{
     message::Message,
-    styles::{style_constants::FONT_BOLD, text::TextStyle},
+    styles::{
+        style_constants::{FONT_BOLD, FONT_SIZE_BODY, FONT_SIZE_SMALL},
+        text::TextStyle,
+    },
     themes::AppTheme,
 };
 
@@ -24,4 +27,11 @@ pub fn text_widget<'a>(
         text = text.font(FONT_BOLD);
     }
     text.into()
+}
+
+pub fn no_data_placeholder<'a>() -> Element<'a, Message, AppTheme> {
+    Text::new("No data available")
+        .size(FONT_SIZE_BODY)
+        .class(TextStyle::Muted)
+        .into()
 }

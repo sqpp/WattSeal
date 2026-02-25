@@ -522,6 +522,50 @@ impl Database {
 
         Ok(filled)
     }
+
+    pub fn select_top_processes_average(
+        &self,
+        n_seconds: i64,
+        top_n: usize,
+    ) -> Result<Vec<(SystemTime, SensorData)>, DatabaseError> {
+        if n_seconds <= 0 {
+            return Ok(vec![(SystemTime::now(), SensorData::Process(Vec::new()))]);
+        }
+
+        let now_ms = to_epoch_millis(SystemTime::now())?;
+        let start = now_ms - n_seconds * 1000;
+        let query = "SELECT
+                ?2 AS timestamp,
+                p.app_name AS app_name,
+                MAX(p.process_exe_path) AS process_exe_path,
+                SUM(COALESCE(p.process_power_watts, 0.0)) / ?4 AS process_power_watts,
+                SUM(COALESCE(p.process_cpu_usage, 0.0)) / ?4 AS process_cpu_usage,
+                SUM(COALESCE(p.process_gpu_usage, 0.0)) / ?4 AS process_gpu_usage,
+                SUM(COALESCE(p.process_mem_usage, 0.0)) / ?4 AS process_mem_usage,
+                SUM(COALESCE(p.read_bytes_per_sec, 0.0)) / ?4 AS read_bytes_per_sec,
+                SUM(COALESCE(p.written_bytes_per_sec, 0.0)) / ?4 AS written_bytes_per_sec,
+                CAST(SUM(COALESCE(p.subprocess_count, 0.0)) / ?4 AS INTEGER) AS subprocess_count
+             FROM timestamp t
+             JOIN process_data p ON t.id = p.timestamp_id
+             WHERE t.timestamp >= ?1 AND t.timestamp < ?2
+             GROUP BY p.app_name
+             ORDER BY process_power_watts DESC
+             LIMIT ?3";
+
+        let rows = self.execute_sensor_query(
+            ProcessData::table_name_static(),
+            &query,
+            params![start, now_ms, top_n as i64, n_seconds as f64],
+        )?;
+
+        let mut processes = Vec::new();
+        for (_, data) in rows {
+            if let SensorData::Process(mut proc_data) = data {
+                processes.append(&mut proc_data);
+            }
+        }
+        Ok(vec![(from_epoch_millis(now_ms), SensorData::Process(processes))])
+    }
 }
 
 fn get_windowed_average_columns(table_name: &str, prefix: &str, window_seconds: i64) -> Result<String, DatabaseError> {

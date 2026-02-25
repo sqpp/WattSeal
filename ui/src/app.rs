@@ -107,10 +107,11 @@ impl App {
                 Task::none()
             }
             Message::FetchAllChartsData(time_range) => {
-                let data = self.load_all_charts_history(time_range);
-                for (timestamp, sensor_data) in data.iter() {
-                    if let Some(sensor) = self.sensors.get_mut(sensor_data.table_name()) {
-                        sensor.push_data(*timestamp, sensor_data);
+                let table_names = self.database.get_tables();
+                for table_name in table_names {
+                    let data = self.load_history(&table_name, time_range.clone());
+                    if let Some(sensor) = self.sensors.get_mut(&table_name) {
+                        sensor.load_history_batch(&data);
                     }
                 }
                 Task::none()
@@ -146,6 +147,9 @@ impl App {
     }
 
     fn load_history(&mut self, table_name: &str, time_range: TimeRange) -> Vec<(DateTime<Local>, SensorData)> {
+        if table_name == ProcessData::table_name_static() {
+            return self.load_process_data(time_range);
+        }
         let result = match time_range {
             TimeRange::LastMinute => self.database.select_data_in_time_range(
                 table_name,
@@ -159,6 +163,10 @@ impl App {
             }
         };
         normalize_integrated_cpu(from_db(result))
+    }
+
+    fn load_process_data(&mut self, time_range: TimeRange) -> Vec<(DateTime<Local>, SensorData)> {
+        from_db(self.database.select_top_processes_average(time_range as i64, 10))
     }
 
     pub fn view(&self) -> Element<'_, Message, AppTheme> {

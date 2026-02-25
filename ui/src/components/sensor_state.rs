@@ -1,4 +1,8 @@
-use std::{cell::RefCell, collections::VecDeque, rc::Rc};
+use std::{
+    cell::RefCell,
+    collections::{HashMap, VecDeque},
+    rc::Rc,
+};
 
 use chrono::{DateTime, Local, Timelike};
 use common::{DatabaseEntry, MetricType, ProcessData, SecondaryValues, SensorData, TotalData, utils::bytes_to_mb};
@@ -31,10 +35,10 @@ use crate::{
 };
 
 const SNAPSHOT_AREA_HEIGHT: f32 = 34.0;
-const PROCESS_APP_WIDTH: f32 = 180.0;
+const PROCESS_APP_WIDTH: f32 = 400.0;
 const PROCESS_ICON_COLUMN_WIDTH: f32 = 24.0;
 const PROCESS_ICON_SIZE: f32 = 16.0;
-const PROCESS_POWER_WIDTH: f32 = 55.0;
+const PROCESS_POWER_WIDTH: f32 = 65.0;
 const PROCESS_CPU_WIDTH: f32 = 48.0;
 const PROCESS_GPU_WIDTH: f32 = 48.0;
 const PROCESS_RAM_WIDTH: f32 = 55.0;
@@ -260,21 +264,39 @@ impl TotalState {
 
 struct ProcessesState {
     top_processes: Vec<ProcessData>,
+    icon_handles: HashMap<String, image::Handle>,
 }
 
 impl ProcessesState {
     fn new() -> Self {
         Self {
             top_processes: Vec::new(),
+            icon_handles: HashMap::new(),
         }
     }
 
     fn update_from_snapshot(&mut self, processes: &[ProcessData]) {
-        self.top_processes = processes.into();
+        let next_top = processes.to_vec();
+
+        for process in &next_top {
+            if let Some(icon_bytes) = &process.icon {
+                self.icon_handles
+                    .insert(process_identity(process), image::Handle::from_bytes(icon_bytes.clone()));
+            }
+        }
+
+        self.icon_handles
+            .retain(|key, _| next_top.iter().any(|process| process_identity(process) == *key));
+        self.top_processes = next_top;
     }
 
     fn clear(&mut self) {
         self.top_processes.clear();
+        self.icon_handles.clear();
+    }
+
+    fn icon_handle_for(&self, process: &ProcessData) -> Option<image::Handle> {
+        self.icon_handles.get(&process_identity(process)).cloned()
     }
 }
 
@@ -367,6 +389,10 @@ impl SensorState {
     }
 
     pub fn push_data(&mut self, timestamp: DateTime<Local>, data: &SensorData) {
+        if matches!(self.sensor_category, SensorCategory::Processes(_)) {
+            return;
+        }
+
         let timestamp = timestamp.with_nanosecond(0).unwrap_or(timestamp);
         self.latest_reading = Some(data.clone());
 
@@ -382,11 +408,7 @@ impl SensorState {
                     state.prune_before(timestamp - self.time_range.duration_seconds());
                     state.power_graph.chart.refresh_cache();
                 }
-                SensorCategory::Processes(state) => {
-                    if let SensorData::Process(processes) = data {
-                        state.update_from_snapshot(processes);
-                    }
-                }
+                SensorCategory::Processes(_) => {}
             }
         }
     }
@@ -401,13 +423,20 @@ impl SensorState {
     }
 
     pub fn load_history_batch(&mut self, data: &[(DateTime<Local>, SensorData)]) {
-        if let SensorCategory::Processes(_) = self.sensor_category {
-            return;
+        match &mut self.sensor_category {
+            SensorCategory::Processes(state) => {
+                if let Some((_, SensorData::Process(processes))) = data.last() {
+                    state.update_from_snapshot(processes);
+                    println!("Loaded {} processes for '{}'", processes.len(), self.display_name);
+                }
+            }
+            _ => {
+                for (timestamp, sensor) in data {
+                    self.push_to_history_only(*timestamp, sensor);
+                }
+                self.refresh_chart();
+            }
         }
-        for (timestamp, sensor) in data {
-            self.push_to_history_only(*timestamp, sensor);
-        }
-        self.refresh_chart();
     }
 
     pub fn update_theme(&mut self, theme: AppTheme) {
@@ -534,7 +563,7 @@ impl SensorState {
     fn process_card<'b>(&'b self, state: &'b ProcessesState, title: Option<&'b str>) -> Element<'b, Message, AppTheme> {
         let header = self.chart_card_header(title, None);
 
-        let header_font_size = FONT_SIZE_SMALL;
+        let header_font_size = FONT_SIZE_BODY;
         let header_style = TextStyle::Muted;
         let header_row = Row::new()
             .spacing(SPACING_MEDIUM)
@@ -597,16 +626,16 @@ impl SensorState {
                 Row::new()
                     .spacing(SPACING_MEDIUM)
                     .align_y(Alignment::Center)
-                    .push(process_icon_cell(&p.icon))
+                    .push(process_icon_cell(state.icon_handle_for(p)))
                     .push(text_widget(
                         format!("{} ({})", p.app_name, p.subprocess_count),
                         table_font_size,
                         TextStyle::Primary,
-                        Length::Shrink,
+                        Length::Fixed(PROCESS_APP_WIDTH),
                         true,
                     ))
                     .push(text_widget(
-                        format!("{:.1}W", p.process_usage_watt),
+                        format!("{:.1}W", p.process_power_watts),
                         table_font_size,
                         TextStyle::Primary,
                         Length::Fixed(PROCESS_POWER_WIDTH),
@@ -667,7 +696,7 @@ impl SensorState {
             .into()
     }
 
-    pub fn chart_card<'b>(
+    pub fn sensor_visual_card<'b>(
         &'b self,
         title: Option<&'b str>,
         height: f32,
@@ -705,9 +734,9 @@ impl SensorState {
     }
 }
 
-fn process_icon_cell(icon_bytes: &Option<Vec<u8>>) -> Element<'static, Message, AppTheme> {
-    let icon: Element<'static, Message, AppTheme> = if let Some(bytes) = icon_bytes {
-        image(image::Handle::from_bytes(bytes.clone()))
+fn process_icon_cell(cached_handle: Option<image::Handle>) -> Element<'static, Message, AppTheme> {
+    let icon: Element<'static, Message, AppTheme> = if let Some(handle) = cached_handle {
+        image(handle)
             .width(Length::Fixed(PROCESS_ICON_SIZE))
             .height(Length::Fixed(PROCESS_ICON_SIZE))
             .content_fit(ContentFit::Contain)
@@ -721,6 +750,14 @@ fn process_icon_cell(icon_bytes: &Option<Vec<u8>>) -> Element<'static, Message, 
         .align_x(Alignment::Center)
         .align_y(Alignment::Center)
         .into()
+}
+
+fn process_identity(process: &ProcessData) -> String {
+    process
+        .process_exe_path
+        .as_ref()
+        .cloned()
+        .unwrap_or_else(|| process.app_name.clone())
 }
 
 fn prune_history(history: &HistoryRef, cutoff: DateTime<Local>) {

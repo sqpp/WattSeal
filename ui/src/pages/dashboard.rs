@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use common::{DatabaseEntry, TotalData};
+use common::{DatabaseEntry, ProcessData, SensorData, TotalData};
 use iced::{
     Alignment, Element, Length, Padding,
     alignment::{Horizontal, Vertical},
@@ -8,7 +8,7 @@ use iced::{
 };
 
 use crate::{
-    components::sensor_state::SensorState,
+    components::{helpers::no_data_placeholder, sensor_state::SensorState},
     message::Message,
     styles::{
         container::ContainerStyle,
@@ -39,6 +39,7 @@ impl DashboardPage {
             .width(Length::Fill)
             .height(Length::Fill)
             .push(self.chart_or_placeholder(sensors, None, TotalData::table_name_static(), 300.0, false))
+            .push(self.view_process_summary(sensors))
             .push(self.view_component_cards(sensors));
 
         content
@@ -93,12 +94,24 @@ impl DashboardPage {
             .into()
     }
 
+    fn view_process_summary<'a>(&'a self, sensors: &'a HashMap<String, SensorState>) -> Element<'a, Message, AppTheme> {
+        let process_data = sensors.get(ProcessData::table_name_static());
+
+        if let Some(process_card) = process_data.and_then(|p| Some(p.sensor_visual_card(None, 300.0, false))) {
+            process_card
+        } else {
+            no_data_placeholder()
+        }
+    }
+
     fn view_component_cards<'a>(&'a self, sensors: &'a HashMap<String, SensorState>) -> Element<'a, Message, AppTheme> {
         let mut column = Column::new().spacing(SPACING_LARGE).width(Length::Fill);
 
         let mut sensors: Vec<(&String, &SensorState)> = sensors
             .iter()
-            .filter(|(table_name, _)| *table_name != TotalData::table_name_static())
+            .filter(|(table_name, _)| {
+                *table_name != TotalData::table_name_static() && *table_name != ProcessData::table_name_static()
+            })
             .collect();
 
         fn priority(name: &str) -> usize {
@@ -124,7 +137,7 @@ impl DashboardPage {
         let mut items_in_row = 0usize;
 
         for (i, (_, sensor)) in sensors.into_iter().enumerate() {
-            let card = sensor.chart_card(None, 200.0, true);
+            let card = sensor.sensor_visual_card(None, 200.0, true);
 
             row = row.push(card);
             items_in_row += 1;
@@ -157,12 +170,7 @@ impl DashboardPage {
     ) -> Element<'a, Message, AppTheme> {
         sensors
             .get(table_name)
-            .map(|c| c.chart_card(title, height, show_usage))
-            .unwrap_or_else(|| {
-                Text::new("No data available")
-                    .size(FONT_SIZE_BODY)
-                    .class(TextStyle::Muted)
-                    .into()
-            })
+            .map(|c| c.sensor_visual_card(title, height, show_usage))
+            .unwrap_or_else(|| no_data_placeholder())
     }
 }
