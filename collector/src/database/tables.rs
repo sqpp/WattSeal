@@ -1,6 +1,6 @@
 use common::{DatabaseEntry, ProcessData};
 
-use super::{AllTimeData, CPUData, DiskData, GPUData, NetworkData, RamData, TotalData};
+use super::{CPUData, DiskData, GPUData, NetworkData, RamData, TotalData};
 use crate::sensors::SensorType;
 
 impl SensorType {

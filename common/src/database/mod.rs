@@ -108,7 +108,7 @@ impl Database {
         tx.execute(
             "CREATE TABLE IF NOT EXISTS all_time_data (
                     id                 INTEGER PRIMARY KEY,
-                    total_power_watts  REAL,
+                    total_energy_wh    REAL,
                     duration_seconds   INTEGER
             )",
             [],
@@ -189,20 +189,17 @@ impl Database {
         Ok(result)
     }
 
-    pub fn update_all_time_data(&mut self, data: &AllTimeData) -> Result<(), DatabaseError> {
+    pub fn update_all_time_data(&mut self, energy_wh: f64, duration_seconds: i64) -> Result<(), DatabaseError> {
         let tx = self.conn.transaction()?;
         let updated_rows = tx.execute(
-            "UPDATE all_time_data
-                 SET total_power_watts = ?1,
-                     duration_seconds = ?2
-             WHERE id = (SELECT id FROM all_time_data ORDER BY id DESC LIMIT 1)",
-            params![data.total_power_watts, data.duration_seconds],
+            "UPDATE all_time_data SET total_energy_wh = total_energy_wh + ?1, duration_seconds = duration_seconds + ?2 WHERE id = 1",
+            params![energy_wh, duration_seconds],
         )?;
 
         if updated_rows == 0 {
             tx.execute(
-                "INSERT INTO all_time_data (total_power_watts, duration_seconds) VALUES (?1, ?2)",
-                params![data.total_power_watts, data.duration_seconds],
+                "INSERT INTO all_time_data (id, total_energy_wh, duration_seconds) VALUES (1, ?1, ?2)",
+                params![energy_wh, duration_seconds],
             )?;
         }
         tx.commit()?;
@@ -340,9 +337,8 @@ impl Database {
         Ok(records)
     }
 
-    // Fetch the last record of the all_time_data table if it exists
     pub fn get_all_time_data(&mut self) -> Result<AllTimeData, DatabaseError> {
-        let query = "SELECT * FROM all_time_data ORDER BY id DESC LIMIT 1";
+        let query = "SELECT * FROM all_time_data WHERE id=1";
         let mut stmt = self.conn.prepare(query)?;
         let result = stmt.query_row([], |row| {
             let data = AllTimeData::from_row(row)?;

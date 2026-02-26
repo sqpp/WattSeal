@@ -13,7 +13,7 @@ use std::{
 
 use common::database::purge::averaging_and_purging_data;
 use database::Database;
-use sensors::{AllTimeData, SensorType, create_event_from_sensors, get_hardware_info, gpu::get_gpu_list};
+use sensors::{SensorType, create_event_from_sensors, get_hardware_info, gpu::get_gpu_list};
 use sysinfo::System;
 
 use crate::sensors::{DiskSensor, NetworkSensor, RamSensor};
@@ -21,9 +21,9 @@ use crate::sensors::{DiskSensor, NetworkSensor, RamSensor};
 pub struct CollectorApp {
     database: Database,
     sensors: Vec<SensorType>,
-    all_time_data: AllTimeData,
     iteration: u64,
     system: Rc<RefCell<System>>,
+    last_update: Instant,
 }
 
 impl CollectorApp {
@@ -33,9 +33,9 @@ impl CollectorApp {
         Ok(CollectorApp {
             database,
             sensors: Vec::new(),
-            all_time_data: AllTimeData::new(),
             iteration: 0,
             system: Rc::new(RefCell::new(s)),
+            last_update: Instant::now(),
         })
     }
 
@@ -98,14 +98,6 @@ impl CollectorApp {
         println!("\n========== GATHERING HARDWARE INFORMATION ==========\n");
         self.set_hardware_info();
 
-        println!("\n========== GETTING ALL TIME DATA ==========");
-        if let Ok(all_time) = database.get_all_time_data() {
-            self.all_time_data = all_time;
-            println!("✓ All-time data loaded from database");
-        } else {
-            println!("✗ No existing all-time data found, starting fresh");
-        }
-
         Ok(())
     }
 
@@ -121,18 +113,24 @@ impl CollectorApp {
 
         loop {
             let start_time = Instant::now();
+            let since_last_update_secs = self.last_update.elapsed().as_secs_f64();
+            self.last_update = start_time;
             println!("\n--- Iteration {} ---", self.iteration);
-
-            let event = create_event_from_sensors(&self.sensors, self.system.clone(), &mut self.all_time_data);
+            let mut total_power = 0.0;
+            let event = create_event_from_sensors(&self.sensors, self.system.clone(), &mut total_power);
+            let energy_wh = total_power * since_last_update_secs / 3600.0;
 
             match self.database.insert_event(&event) {
                 Ok(_) => println!("✓ Event data saved to database"),
                 Err(e) => eprintln!("✗ Failed to save event data: {:?}", e),
             }
 
-            match self.database.update_all_time_data(&self.all_time_data) {
-                Ok(_) => println!("✓ All time data updated in database"),
-                Err(e) => eprintln!("✗ Failed to update All time data: {:?}", e),
+            match self
+                .database
+                .update_all_time_data(energy_wh, since_last_update_secs.round() as i64)
+            {
+                Ok(_) => println!("✓ All-time data updated in database"),
+                Err(e) => eprintln!("✗ Failed to update all-time data: {:?}", e),
             }
 
             for sensor_data in event.data().iter() {
@@ -148,8 +146,8 @@ impl CollectorApp {
 
             self.iteration += 1;
             println!(
-                "All-Time Power over {} seconds: {:.3} W",
-                self.all_time_data.duration_seconds, self.all_time_data.total_power_watts
+                "All-Time Energy over {} seconds: {:.3} Wh ({} W)",
+                since_last_update_secs, energy_wh, total_power
             );
 
             // ADJUST SLEEP DURATION TO MAINTAIN 1 SECOND INTERVALS

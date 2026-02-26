@@ -338,24 +338,16 @@ impl DatabaseEntry for AllTimeData {
     }
 
     fn insert_params<'a>(&'a self, _timestamp_id: &'a i64) -> Vec<&'a dyn ToSql> {
-        vec![&self.total_power_watts, &self.duration_seconds]
-    }
-
-    fn insert_sql() -> String {
-        "INSERT INTO all_time_data (total_power_watts, duration_seconds) VALUES (?1, ?2)".to_string()
-    }
-
-    fn create_table_sql() -> String {
-        "CREATE TABLE IF NOT EXISTS all_time_data (id INTEGER PRIMARY KEY, total_power_watts REAL, duration_seconds INTEGER)".to_string()
+        vec![&self.total_energy_wh, &self.duration_seconds]
     }
 
     fn columns_static() -> &'static [(&'static str, &'static str)] {
-        &[("total_power_watts", "REAL"), ("duration_seconds", "INTEGER")]
+        &[("total_energy_wh", "REAL"), ("duration_seconds", "INTEGER")]
     }
 
     fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(AllTimeData {
-            total_power_watts: row.get("total_power_watts")?,
+            total_energy_wh: row.get("total_energy_wh")?,
             duration_seconds: row.get("duration_seconds")?,
         })
     }
