@@ -21,7 +21,8 @@ pub struct InfoCard {
     pub accent: Color,
     pub title: String,
     pub subtitle: String,
-    pub fields: Vec<InfoField>,
+    pub field: InfoField,
+    pub optional_field: Option<InfoField>,
 }
 
 impl InfoCard {
@@ -30,14 +31,16 @@ impl InfoCard {
         accent: Color,
         title: impl Into<String>,
         subtitle: impl Into<String>,
-        fields: Vec<InfoField>,
+        field: InfoField,
+        optional_field: Option<InfoField>,
     ) -> Self {
         Self {
             icon_svg,
             accent,
             title: title.into(),
             subtitle: subtitle.into(),
-            fields,
+            field,
+            optional_field,
         }
     }
 }
@@ -61,7 +64,8 @@ pub fn hardware_card<'a>(
     accent: Color,
     title: &str,
     subtitle: &str,
-    fields: Vec<InfoField>,
+    field: InfoField,
+    optional_field: Option<InfoField>,
 ) -> Element<'a, Message, AppTheme> {
     let icon = Svg::new(svg::Handle::from_memory(icon_svg))
         .width(22)
@@ -86,27 +90,20 @@ pub fn hardware_card<'a>(
 
     let mut content = Column::new().spacing(SPACING_LARGE).push(header);
 
-    let mut fields_content = Column::new().spacing(SPACING_LARGE);
+    let to_field_column = |field: InfoField| {
+        Column::new()
+            .spacing(2)
+            .width(Length::FillPortion(1))
+            .push(Text::new(field.label).size(FONT_SIZE_SMALL).class(TextStyle::Muted))
+            .push(Text::new(field.value).size(FONT_SIZE_SUBTITLE).font(FONT_BOLD))
+    };
 
-    for chunk in fields.chunks(2) {
-        let mut row = Row::new().spacing(SPACING_LARGE);
-        for field in chunk {
-            row = row.push(
-                Column::new()
-                    .spacing(2)
-                    .width(Length::FillPortion(1))
-                    .push(
-                        Text::new(field.label.clone())
-                            .size(FONT_SIZE_SMALL)
-                            .class(TextStyle::Muted),
-                    )
-                    .push(Text::new(field.value.clone()).size(FONT_SIZE_SUBTITLE).font(FONT_BOLD)),
-            );
-        }
-        fields_content = fields_content.push(row);
+    let mut fields_row = Row::new().spacing(SPACING_LARGE).push(to_field_column(field));
+    if let Some(second) = optional_field {
+        fields_row = fields_row.push(to_field_column(second));
     }
 
-    content = content.push(fields_content);
+    content = content.push(fields_row);
 
     Container::new(Scrollable::new(content).width(Length::Fill).height(Length::Fill))
         .padding(PADDING_LARGE)

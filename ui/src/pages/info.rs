@@ -1,7 +1,7 @@
 use common::HardwareInfo;
 use iced::{
     Color, Element, Length, Padding,
-    widget::{Container, Scrollable, grid},
+    widget::{Column, Container, Row, Scrollable, Space},
 };
 
 use crate::{
@@ -15,7 +15,7 @@ use crate::{
     themes::AppTheme,
 };
 
-const CARD_MAX_WIDTH: f32 = 350.0;
+const CARD_HEIGHT: f32 = 180.0;
 
 pub struct InfoPage;
 
@@ -34,15 +34,11 @@ impl InfoPage {
             pal.primary,
             "CPU".to_string(),
             "Processor Information".to_string(),
-            vec![
-                InfoField::new("Model", &hw.cpu.name),
-                InfoField::new(
-                    "Cores",
-                    format!("{} cores / {} threads", hw.cpu.physical_cores, hw.cpu.logical_cores),
-                ),
-                InfoField::new("Base Frequency", format!("{} MHz", hw.cpu.base_frequency_mhz)),
-                InfoField::new("Architecture", &hw.cpu.architecture),
-            ],
+            InfoField::new("Model", &hw.cpu.name),
+            Some(InfoField::new(
+                "Cores",
+                format!("{} cores / {} threads", hw.cpu.physical_cores, hw.cpu.logical_cores),
+            )),
         ));
 
         if hw.gpus.is_empty() {
@@ -51,7 +47,8 @@ impl InfoPage {
                 pal.danger,
                 "GPU".to_string(),
                 "Graphics Information".to_string(),
-                vec![InfoField::new("Model", "N/A")],
+                InfoField::new("Model", "N/A"),
+                None,
             ));
         } else {
             for (i, gpu) in hw.gpus.iter().enumerate() {
@@ -61,7 +58,8 @@ impl InfoPage {
                     pal.danger,
                     "GPU".to_string(),
                     subtitle,
-                    vec![InfoField::new("Model", gpu.as_str())],
+                    InfoField::new("Model", gpu.as_str()),
+                    None,
                 ));
             }
         }
@@ -71,10 +69,8 @@ impl InfoPage {
             pal.warning,
             "Memory".to_string(),
             "RAM Information".to_string(),
-            vec![
-                InfoField::new("Total Memory", format_bytes_gb(hw.memory.total_ram_bytes)),
-                InfoField::new("Swap", format_bytes_gb(hw.memory.total_swap_bytes)),
-            ],
+            InfoField::new("Total Memory", format_bytes_gb(hw.memory.total_ram_bytes)),
+            Some(InfoField::new("Swap", format_bytes_gb(hw.memory.total_swap_bytes))),
         ));
 
         specs.push(InfoCard::new(
@@ -82,59 +78,55 @@ impl InfoPage {
             pal.success,
             "System".to_string(),
             "OS Information".to_string(),
-            vec![
-                InfoField::new("Operating System", &hw.system.os),
-                InfoField::new("Hostname", &hw.system.hostname),
-            ],
+            InfoField::new("Operating System", &hw.system.os),
+            Some(InfoField::new("Hostname", &hw.system.hostname)),
         ));
 
         if hw.disks.is_empty() {
-            let fields = vec![InfoField::new("Status", "No disk info")];
             specs.push(InfoCard::new(
                 icons::STORAGE,
                 pal.primary,
                 "Storage".to_string(),
                 "Disk Information".to_string(),
-                fields,
+                InfoField::new("Disk", "N/A"),
+                Some(InfoField::new("Space", "N/A")),
             ));
         } else {
             for (i, disk) in hw.disks.iter().enumerate() {
-                let fields = vec![
-                    InfoField::new("Disk Name", &disk.name),
-                    InfoField::new("Total Space", format_bytes_gb(disk.total_bytes)),
-                    InfoField::new("Used", format_bytes_gb(disk.used_bytes)),
-                ];
                 let subtitle = format!("Disk {}", i + 1);
                 specs.push(InfoCard::new(
                     icons::STORAGE,
                     pal.primary,
                     "Storage".to_string(),
                     subtitle,
-                    fields,
+                    InfoField::new("Disk", format!("{} ({})", disk.mount_point, disk.name)),
+                    Some(InfoField::new(
+                        "Space",
+                        format!(
+                            "{} / {}",
+                            format_bytes_gb(disk.used_bytes),
+                            format_bytes_gb(disk.total_bytes)
+                        ),
+                    )),
                 ));
             }
         }
 
         if hw.battery.present {
-            let mut f = Vec::new();
-            if let Some(name) = &hw.battery.name {
-                f.push(InfoField::new("Name", name));
-            }
-            if let Some(cap) = hw.battery.design_capacity_wh {
-                f.push(InfoField::new("Design Capacity", format!("{:.1} Wh", cap)));
-            }
-            if let Some(cycles) = hw.battery.cycle_count {
-                f.push(InfoField::new("Cycle Count", cycles.to_string()));
-            }
-            if f.is_empty() {
-                f.push(InfoField::new("Status", "Present"));
-            }
+            let capacity = match (hw.battery.design_capacity_wh, hw.battery.cycle_count) {
+                (Some(cap), Some(cycles)) => format!("{:.1} Wh ({} cycles)", cap, cycles),
+                (Some(cap), None) => format!("{:.1} Wh", cap),
+                (None, Some(cycles)) => format!("N/A ({} cycles)", cycles),
+                (None, None) => "N/A".to_string(),
+            };
+
             specs.push(InfoCard::new(
                 icons::BATTERY,
                 pal.warning,
                 "Battery".to_string(),
                 "Battery Status".to_string(),
-                f,
+                InfoField::new("Name", hw.battery.name.as_deref().unwrap_or("N/A")),
+                Some(InfoField::new("Capacity", capacity)),
             ));
         } else {
             specs.push(InfoCard::new(
@@ -142,7 +134,8 @@ impl InfoPage {
                 pal.warning,
                 "Battery".to_string(),
                 "Battery Status".to_string(),
-                vec![InfoField::new("Status", "Not present")],
+                InfoField::new("Name", "N/A"),
+                Some(InfoField::new("Capacity", "N/A")),
             ));
         }
 
@@ -152,41 +145,66 @@ impl InfoPage {
                 pal.success,
                 "Display".to_string(),
                 "Screen Information".to_string(),
-                vec![InfoField::new("Status", "No display info")],
+                InfoField::new("Model", "N/A"),
+                Some(InfoField::new("Mode", "N/A")),
             ));
         } else {
-            for d in hw.displays.iter() {
+            let mut displays = hw.displays.iter().collect::<Vec<_>>();
+            displays.sort_by_key(|d| !d.is_primary);
+
+            for d in displays {
                 let subtitle = if d.is_primary {
                     "Primary Display"
                 } else {
                     "Secondary Display"
                 };
-                let mut f = vec![
-                    InfoField::new("Model", &d.model),
-                    InfoField::new("Resolution", &d.resolution),
-                ];
-                if d.refresh_rate_hz > 0 {
-                    f.push(InfoField::new("Refresh Rate", format!("{} Hz", d.refresh_rate_hz)));
-                }
                 specs.push(InfoCard::new(
                     icons::DISPLAY,
                     pal.success,
                     "Display".to_string(),
                     subtitle.to_string(),
-                    f,
+                    InfoField::new("Model", &d.model),
+                    Some(InfoField::new(
+                        "Mode",
+                        format_display_mode(&d.resolution, d.refresh_rate_hz),
+                    )),
                 ));
             }
         }
 
         let cards = specs
             .into_iter()
-            .map(|card| hardware_card(card.icon_svg, card.accent, &card.title, &card.subtitle, card.fields))
+            .map(|card| {
+                hardware_card(
+                    card.icon_svg,
+                    card.accent,
+                    &card.title,
+                    &card.subtitle,
+                    card.field,
+                    card.optional_field,
+                )
+            })
             .collect::<Vec<_>>();
 
-        let grid = grid(cards).fluid(CARD_MAX_WIDTH).spacing(SPACING_LARGE);
+        let mut card_rows = Column::new().spacing(SPACING_LARGE);
+
+        let mut row = Row::new().spacing(SPACING_LARGE);
+
+        for (i, card) in cards.into_iter().enumerate() {
+            if i % 3 == 0 && i != 0 {
+                card_rows = card_rows.push(row);
+                row = Row::new().spacing(SPACING_LARGE);
+            }
+
+            row = row.push(
+                Container::new(card)
+                    .width(Length::FillPortion(1))
+                    .height(Length::Fixed(CARD_HEIGHT)),
+            );
+        }
 
         Scrollable::new(
-            Container::new(grid)
+            Container::new(card_rows)
                 .width(Length::Fill)
                 .padding(Padding::from(PADDING_LARGE)),
         )
@@ -203,4 +221,12 @@ fn format_bytes_gb(bytes: u64) -> String {
     }
     let gb = bytes as f64 / (1024.0 * 1024.0 * 1024.0);
     format!("{:.2} GB", gb)
+}
+
+fn format_display_mode(resolution: &str, refresh_rate_hz: u32) -> String {
+    if refresh_rate_hz > 0 {
+        format!("{} @ {} Hz", resolution, refresh_rate_hz)
+    } else {
+        resolution.to_string()
+    }
 }
