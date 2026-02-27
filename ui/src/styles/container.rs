@@ -18,6 +18,8 @@ pub enum ContainerStyle {
     PowerCard,
     ComponentCard,
     IconBadge(Color),
+    ModalBackdrop,
+    ModalCard,
 }
 
 impl Catalog for AppTheme {
@@ -91,6 +93,27 @@ impl Catalog for AppTheme {
                     color: with_alpha(*accent, 0.3),
                     width: BORDER_WIDTH,
                     radius: BORDER_RADIUS_MEDIUM.into(),
+                },
+                ..Default::default()
+            },
+
+            ContainerStyle::ModalBackdrop => container::Style {
+                background: Some(Background::Color(with_alpha(Color::BLACK, 0.35))),
+                ..Default::default()
+            },
+
+            ContainerStyle::ModalCard => container::Style {
+                background: Some(Background::Color(ext.elevated_background)),
+                border: Border {
+                    color: ext.border,
+                    width: BORDER_WIDTH,
+                    radius: BORDER_RADIUS_LARGE.into(),
+                },
+                text_color: Some(ext.text),
+                shadow: Shadow {
+                    color: with_alpha(Color::BLACK, 0.25),
+                    offset: Vector::new(0.0, 8.0),
+                    blur_radius: 20.0,
                 },
                 ..Default::default()
             },

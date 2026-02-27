@@ -6,17 +6,18 @@ use common::{
     generic_name_for_table,
 };
 use iced::{
-    Element, Subscription, Task,
+    Alignment, Element, Length, Subscription, Task,
     time::{Duration, every},
-    widget::{Column, Container, canvas::path, pick_list},
+    widget::{Column, Container, Space, center, mouse_area, opaque, stack},
 };
 
 use crate::{
-    components::{header::Header, sensor_state::SensorState},
+    components::{header::Header, helpers::modal, sensor_state::SensorState},
     message::Message,
     pages::{Page, dashboard::DashboardPage, info::InfoPage, optimization::OptimizationPage, settings::SettingsPage},
+    styles::container::ContainerStyle,
     themes::AppTheme,
-    types::TimeRange,
+    types::{AppLanguage, TimeRange},
 };
 
 const FPS: u64 = 1;
@@ -29,6 +30,8 @@ pub struct App {
     info_page: InfoPage,
     optimization_page: OptimizationPage,
     settings_page: SettingsPage,
+    settings_open: bool,
+    language: AppLanguage,
     header: Header,
     theme: AppTheme,
     database: Database,
@@ -64,6 +67,8 @@ impl App {
                 info_page: InfoPage::new(),
                 optimization_page: OptimizationPage::new(),
                 settings_page: SettingsPage::new(),
+                settings_open: false,
+                language: AppLanguage::default(),
                 theme,
                 database,
                 hardware_info,
@@ -95,6 +100,18 @@ impl App {
                 for sensor in self.sensors.values_mut() {
                     sensor.update_theme(theme);
                 }
+                Task::none()
+            }
+            Message::ChangeLanguage(language) => {
+                self.language = language;
+                Task::none()
+            }
+            Message::OpenSettings => {
+                self.settings_open = true;
+                Task::none()
+            }
+            Message::CloseSettings => {
+                self.settings_open = false;
                 Task::none()
             }
             Message::ChangeChartMetricType(table_name, metric_type) => {
@@ -181,17 +198,19 @@ impl App {
             Page::Dashboard => self.dashboard_page.view(&self.sensors, &self.all_time_data),
             Page::Info => self.info_page.view(&self.hardware_info, self.theme),
             Page::Optimization => self.optimization_page.view(),
-            Page::Settings => self.settings_page.view(),
         };
 
-        let theme_picker =
-            Container::new(pick_list(AppTheme::all(), Some(self.theme), Message::ChangeTheme)).padding(10);
+        let content: Element<'_, Message, AppTheme> = Column::new().push(self.header.view()).push(page_content).into();
 
-        Column::new()
-            .push(self.header.view())
-            .push(page_content)
-            .push(theme_picker)
-            .into()
+        if self.settings_open {
+            modal(
+                content,
+                self.settings_page.view(self.theme, self.language),
+                Message::CloseSettings,
+            )
+        } else {
+            content
+        }
     }
 
     pub fn subscription(&self) -> Subscription<Message> {

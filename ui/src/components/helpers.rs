@@ -1,7 +1,7 @@
 use iced::{
     Element, Length,
     widget::{
-        Column, Container, Row, Text,
+        Column, Container, Row, Text, center, mouse_area, opaque, stack,
         text::{self, Catalog},
     },
 };
@@ -9,6 +9,7 @@ use iced::{
 use crate::{
     message::Message,
     styles::{
+        container::ContainerStyle,
         style_constants::{FONT_BOLD, FONT_SIZE_BODY, FONT_SIZE_SMALL},
         text::TextStyle,
     },
@@ -34,4 +35,15 @@ pub fn no_data_placeholder<'a>() -> Element<'a, Message, AppTheme> {
         .size(FONT_SIZE_BODY)
         .class(TextStyle::Muted)
         .into()
+}
+
+pub fn modal<'a>(
+    background: Element<'a, Message, AppTheme>,
+    content: Element<'a, Message, AppTheme>,
+    on_click_outside: Message,
+) -> Element<'a, Message, AppTheme> {
+    let mouse_area =
+        mouse_area(center(opaque(content)).class(ContainerStyle::ModalBackdrop)).on_press(on_click_outside);
+
+    stack![background, opaque(mouse_area)].into()
 }

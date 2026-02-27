@@ -26,4 +26,4 @@ macro_rules! define_pages {
     };
 }
 
-define_pages!(Dashboard, Info, Optimization, Settings);
+define_pages!(Dashboard, Info, Optimization);

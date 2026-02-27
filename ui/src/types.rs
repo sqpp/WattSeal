@@ -53,3 +53,25 @@ impl Display for TimeRange {
         }
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum AppLanguage {
+    #[default]
+    English,
+    French,
+}
+
+impl AppLanguage {
+    pub const fn all() -> &'static [AppLanguage] {
+        &[AppLanguage::English, AppLanguage::French]
+    }
+}
+
+impl Display for AppLanguage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AppLanguage::English => write!(f, "English"),
+            AppLanguage::French => write!(f, "Français"),
+        }
+    }
+}

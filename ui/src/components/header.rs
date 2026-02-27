@@ -1,6 +1,6 @@
 use iced::{
     Alignment, Element, Length, Padding,
-    widget::{Button, Container, Row, Text, button},
+    widget::{Column, Container, Row, Text, button},
 };
 
 use crate::{
@@ -9,7 +9,7 @@ use crate::{
     styles::{
         button::ButtonStyle,
         container::ContainerStyle,
-        style_constants::{FONT_BOLD, FONT_SIZE_BODY, FONT_SIZE_HEADER, PADDING_LARGE, PADDING_MEDIUM},
+        style_constants::{FONT_BOLD, FONT_SIZE_BODY, FONT_SIZE_HEADER, PADDING_LARGE, PADDING_MEDIUM, SPACING_MEDIUM},
     },
     themes::AppTheme,
 };
@@ -36,6 +36,11 @@ impl Header {
         )
         .width(Length::Fill);
 
+        let settings_button = button(Text::new("Settings").size(FONT_SIZE_BODY))
+            .padding(Padding::from([8.0, 16.0]))
+            .class(ButtonStyle::Standard)
+            .on_press(Message::OpenSettings);
+
         let nav_buttons = self.nav_pages.iter().fold(Row::new().spacing(8), |row, page| {
             let is_active = self.active_page == *page;
             let button_style = if is_active {
@@ -57,7 +62,8 @@ impl Header {
             .spacing(20)
             .align_y(Alignment::Center)
             .push(title)
-            .push(nav_buttons);
+            .push(nav_buttons)
+            .push(settings_button);
 
         Container::new(content)
             .width(Length::Fill)

@@ -1,13 +1,20 @@
 use chrono::{DateTime, Local};
 use common::{MetricType, SensorData};
 
-use crate::{pages::Page, themes::AppTheme, types::TimeRange};
+use crate::{
+    pages::Page,
+    themes::AppTheme,
+    types::{AppLanguage, TimeRange},
+};
 
 #[derive(Debug, Clone)]
 pub enum Message {
     Tick,
     NavigateTo(Page),
     ChangeTheme(AppTheme),
+    ChangeLanguage(AppLanguage),
+    OpenSettings,
+    CloseSettings,
     ChangeChartMetricType(String, MetricType),
     ChangeChartTimeRange(String, TimeRange),
     UpdateChartData(Vec<(DateTime<Local>, SensorData)>),
