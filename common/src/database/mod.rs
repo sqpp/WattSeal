@@ -322,6 +322,9 @@ impl Database {
 
         if let Some(tables) = &self.tables {
             for table_name in tables {
+                if table_name == ProcessData::table_name_static() {
+                    continue;
+                }
                 let query = format!(
                     "SELECT timestamp_id, * FROM {} WHERE timestamp_id IN ({})",
                     table_name, id_list
@@ -553,7 +556,7 @@ impl Database {
                 SUM(COALESCE(p.process_mem_usage, 0.0)) / ?4 AS process_mem_usage,
                 SUM(COALESCE(p.read_bytes_per_sec, 0.0)) / ?4 AS read_bytes_per_sec,
                 SUM(COALESCE(p.written_bytes_per_sec, 0.0)) / ?4 AS written_bytes_per_sec,
-                CAST(SUM(COALESCE(p.subprocess_count, 0.0)) / ?4 AS INTEGER) AS subprocess_count
+                MAX(p.subprocess_count) AS subprocess_count
              FROM timestamp t
              JOIN process_data p ON t.id = p.timestamp_id
              WHERE t.timestamp >= ?1 AND t.timestamp < ?2

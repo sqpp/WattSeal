@@ -317,9 +317,11 @@ impl ProcessesState {
         let next_top = processes.to_vec();
 
         for process in &next_top {
-            if let Some(icon_bytes) = &process.icon {
-                self.icon_handles
-                    .insert(process_identity(process), image::Handle::from_bytes(icon_bytes.clone()));
+            if let Some(icon_data) = &process.icon {
+                self.icon_handles.insert(
+                    process_identity(process),
+                    image::Handle::from_rgba(icon_data.width, icon_data.height, icon_data.pixels.clone()),
+                );
             }
         }
 

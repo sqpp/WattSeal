@@ -90,6 +90,13 @@ pub struct NetworkData {
 }
 
 #[derive(Debug, Clone)]
+pub struct IconData {
+    pub width: u32,
+    pub height: u32,
+    pub pixels: Vec<u8>,
+}
+
+#[derive(Debug, Clone)]
 pub struct ProcessData {
     pub app_name: String,
     pub process_exe_path: Option<String>,
@@ -100,7 +107,7 @@ pub struct ProcessData {
     pub read_bytes_per_sec: f64,
     pub written_bytes_per_sec: f64,
     pub subprocess_count: u32,
-    pub icon: Option<Vec<u8>>,
+    pub icon: Option<IconData>,
 }
 
 #[derive(Debug, Clone)]

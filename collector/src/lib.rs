@@ -200,4 +200,10 @@ fn is_admin() -> bool {
         }
         rapl_accessible
     }
+
+    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
+    {
+        eprintln!("\u{26a0} No privileged power-reading support on this platform. Using estimation.");
+        false
+    }
 }
