@@ -1,17 +1,11 @@
-use std::{cell::RefCell, rc::Rc, time::Instant};
+use std::{cell::RefCell, time::Instant};
 
 use driver::WinRing0Reader;
-use sysinfo::System;
 
 use super::{CPUVendor, Sensor, SensorError};
 use crate::database::{CPUData, SensorData};
 
 mod driver;
-
-enum MeasurementSource {
-    MSR(MSRReader),
-    Estimation,
-}
 
 #[derive(Clone)]
 struct CPUValues {
@@ -53,51 +47,43 @@ impl Default for EnergyMeasurement {
 }
 
 pub struct WindowsCPUSensor {
-    measurement_source: MeasurementSource,
+    msr_reader: MSRReader,
     last_energy_measurement: RefCell<EnergyMeasurement>,
 }
 
 impl WindowsCPUSensor {
-    pub fn new(vendor_id: &str) -> Self {
+    pub fn new(vendor_id: &str) -> Result<Self, SensorError> {
         let vendor = CPUVendor::from_str(vendor_id);
-        let measurement_source = WinRing0Reader::new()
-            .map(|ring0_reader| MeasurementSource::MSR(MSRReader::new(ring0_reader, vendor)))
-            .unwrap_or(MeasurementSource::Estimation);
+        let ring0_reader =
+            WinRing0Reader::new().map_err(|e| SensorError::ReadError(format!("WinRing0 init failed: {}", e)))?;
+        let msr_reader = MSRReader::new(ring0_reader, vendor);
 
-        let last_energy_measurement = EnergyMeasurement::default();
-        let mut sys = System::new_all();
-        sys.refresh_all();
-
-        WindowsCPUSensor {
-            measurement_source,
-            last_energy_measurement: RefCell::new(last_energy_measurement),
-        }
+        Ok(WindowsCPUSensor {
+            msr_reader,
+            last_energy_measurement: RefCell::new(EnergyMeasurement::default()),
+        })
     }
 
     fn read_raw_power(&self) -> Result<CPUValues, SensorError> {
-        match &self.measurement_source {
-            MeasurementSource::MSR(msr_reader) => {
-                let current_energy = msr_reader.read_energy()?;
-                let power_values = {
-                    let last_energy = self.last_energy_measurement.try_borrow().map_err(|e| {
-                        SensorError::ReadError(format!("Failed to borrow last energy measurement: {}", e))
-                    })?;
-                    msr_reader.calculate_power(&current_energy, &last_energy)
-                };
+        let current_energy = self.msr_reader.read_energy()?;
+        let power_values = {
+            let last_energy = self
+                .last_energy_measurement
+                .try_borrow()
+                .map_err(|e| SensorError::ReadError(format!("Failed to borrow last energy measurement: {}", e)))?;
+            self.msr_reader.calculate_power(&current_energy, &last_energy)
+        };
 
-                let mut last_energy_mut = self
-                    .last_energy_measurement
-                    .try_borrow_mut()
-                    .map_err(|e| SensorError::ReadError(format!("Failed to update last energy measurement: {}", e)))?;
-                *last_energy_mut = current_energy;
+        let mut last_energy_mut = self
+            .last_energy_measurement
+            .try_borrow_mut()
+            .map_err(|e| SensorError::ReadError(format!("Failed to update last energy measurement: {}", e)))?;
+        *last_energy_mut = current_energy;
 
-                if power_values.pkg.is_none() {
-                    return Err(SensorError::ReadError("Failed to calculate power".to_string()));
-                }
-                Ok(power_values)
-            }
-            _ => Err(SensorError::NotSupported),
+        if power_values.pkg.is_none() {
+            return Err(SensorError::ReadError("Failed to calculate power".to_string()));
         }
+        Ok(power_values)
     }
 }
 

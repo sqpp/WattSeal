@@ -40,13 +40,13 @@ impl CollectorApp {
     }
 
     pub fn initialize(&mut self) -> Result<(), String> {
-        check_permissions()?;
+        let is_admin = is_admin();
 
         println!("\n========== INITIALIZING SYSTEM ==========\n");
 
         // Initialize CPU sensor
         println!("\nInitializing sensors...");
-        let sensor_cpu = sensors::cpu::get_cpu_power_sensor(self.system.clone(), 0);
+        let sensor_cpu = sensors::cpu::get_cpu_power_sensor(self.system.clone(), 0, is_admin);
         match sensor_cpu {
             Ok(sensor) => {
                 println!("✓ CPU Power Sensor initialized successfully");
@@ -181,28 +181,23 @@ impl CollectorApp {
     }
 }
 
-fn check_permissions() -> Result<(), String> {
+fn is_admin() -> bool {
     #[cfg(target_os = "windows")]
     {
-        if !is_admin::is_admin() {
-            Err(
-                "This program requires Administrator privileges on Windows. Please run this program as Administrator."
-                    .to_string(),
-            )
-        } else {
-            Ok(())
+        let admin = is_admin::is_admin();
+        if !admin {
+            eprintln!("\u{26a0} Running without Administrator privileges. CPU power readings will use estimation.");
         }
+        admin
     }
 
     #[cfg(target_os = "linux")]
     {
-        if !is_root() {
-            Err(format!(
-                "This program requires root privileges on Linux. Please run with: sudo {}",
-                std::env::current_exe().unwrap_or_else(|_| "<program>".into()).display()
-            ))
-        } else {
-            Ok(())
+        let rapl_accessible = std::fs::read_to_string("/sys/class/powercap/intel-rapl:0/energy_uj").is_ok();
+        if !rapl_accessible {
+            eprintln!("\u{26a0} RAPL not accessible. CPU power readings will use estimation.");
+            eprintln!("  Tip: run as root or grant read access to /sys/class/powercap/");
         }
+        rapl_accessible
     }
 }

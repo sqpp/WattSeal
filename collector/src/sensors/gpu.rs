@@ -1,7 +1,6 @@
-use std::{collections::HashMap, hash::Hash};
+use std::collections::HashMap;
 
 use common::types::InitialInfo;
-use windows::{Win32::Graphics::Dxgi::*, core::PCWSTR};
 
 use super::{Sensor, SensorError, SensorType};
 use crate::database::{GPUData, SensorData};
@@ -29,6 +28,7 @@ impl GPUVendor {
     }
 }
 
+#[cfg(target_os = "windows")]
 pub fn get_gpu_list() -> Vec<String> {
     use windows::{Win32::Graphics::Dxgi::*, core::Result};
 
@@ -65,17 +65,41 @@ pub fn get_gpu_list() -> Vec<String> {
     list
 }
 
+#[cfg(target_os = "linux")]
+pub fn get_gpu_list() -> Vec<String> {
+    nvml_wrapper::Nvml::init()
+        .and_then(|nvml| {
+            let count = nvml.device_count()?;
+            Ok((0..count)
+                .filter_map(|i| nvml.device_by_index(i).ok())
+                .filter_map(|d| d.name().ok())
+                .collect())
+        })
+        .unwrap_or_default()
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "linux")))]
+pub fn get_gpu_list() -> Vec<String> {
+    Vec::new()
+}
+
 pub enum GPUSensor {
+    #[cfg(any(target_os = "windows", target_os = "linux"))]
     Nvidia(nvidia_gpu::NvidiaGPUSensor),
+    #[cfg(target_os = "windows")]
     Amd(amd_gpu::AmdGPUSensor),
+    #[cfg(target_os = "windows")]
     Intel(intel_gpu::IntelGPUSensor),
 }
 
 impl Sensor for GPUSensor {
     fn read_full_data(&self) -> Result<SensorData, SensorError> {
         let data = match self {
+            #[cfg(any(target_os = "windows", target_os = "linux"))]
             GPUSensor::Nvidia(sensor) => sensor.read_full_data()?,
+            #[cfg(target_os = "windows")]
             GPUSensor::Amd(sensor) => sensor.read_full_data()?,
+            #[cfg(target_os = "windows")]
             GPUSensor::Intel(sensor) => sensor.read_full_data()?,
         };
         Ok(data)
@@ -86,33 +110,51 @@ impl Sensor for GPUSensor {
     }
 
     fn read_name(&self) -> Result<String, SensorError> {
-        Ok(format!("Gpu(s): [{}]", get_gpu_list().join(", ").to_string()))
+        Ok(format!("Gpu(s): [{}]", get_gpu_list().join(", ")))
     }
 }
 
 pub fn get_gpu_power_sensor(vendor_id: &str, index: u32) -> Result<SensorType, SensorError> {
     let vendor = GPUVendor::from_str(vendor_id);
-    let sensor = match vendor {
-        GPUVendor::Amd => Ok(GPUSensor::Amd(amd_gpu::AmdGPUSensor::new(index)?)),
-        GPUVendor::Nvidia => Ok(GPUSensor::Nvidia(nvidia_gpu::NvidiaGPUSensor::new(index)?)),
-        GPUVendor::Intel => Ok(GPUSensor::Intel(intel_gpu::IntelGPUSensor::new(index)?)),
-        GPUVendor::Other => Err(SensorError::NotSupported),
-    };
-    match sensor {
-        Ok(s) => Ok(SensorType::GPU(s)),
-        Err(e) => Err(e),
+
+    #[cfg(target_os = "windows")]
+    {
+        let sensor = match vendor {
+            GPUVendor::Amd => Ok(GPUSensor::Amd(amd_gpu::AmdGPUSensor::new(index)?)),
+            GPUVendor::Nvidia => Ok(GPUSensor::Nvidia(nvidia_gpu::NvidiaGPUSensor::new(index)?)),
+            GPUVendor::Intel => Ok(GPUSensor::Intel(intel_gpu::IntelGPUSensor::new(index)?)),
+            GPUVendor::Other => Err(SensorError::NotSupported),
+        };
+        return sensor.map(SensorType::GPU);
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        return match vendor {
+            GPUVendor::Nvidia => nvidia_gpu::NvidiaGPUSensor::new(index).map(|s| SensorType::GPU(GPUSensor::Nvidia(s))),
+            _ => Err(SensorError::NotSupported),
+        };
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
+    {
+        let _ = (vendor, index);
+        Err(SensorError::NotSupported)
     }
 }
 
 impl GPUSensor {
     pub fn get_process_gpu_usage(&self, current_timestamp: u64) -> Result<HashMap<u32, f64>, SensorError> {
         match self {
+            #[cfg(any(target_os = "windows", target_os = "linux"))]
             GPUSensor::Nvidia(sensor) => sensor.get_processes_gpu_usage(current_timestamp),
+            #[cfg(target_os = "windows")]
             GPUSensor::Amd(_) | GPUSensor::Intel(_) => Err(SensorError::NotSupported),
         }
     }
 }
 
+#[cfg(target_os = "windows")]
 mod amd_gpu {
     use std::ops::Index;
 
@@ -173,6 +215,7 @@ mod amd_gpu {
     }
 }
 
+#[cfg(any(target_os = "windows", target_os = "linux"))]
 mod nvidia_gpu {
     use std::{cell::RefCell, collections::HashMap};
 
@@ -257,6 +300,7 @@ mod nvidia_gpu {
     }
 }
 
+#[cfg(target_os = "windows")]
 mod intel_gpu {
     use std::slice;
 

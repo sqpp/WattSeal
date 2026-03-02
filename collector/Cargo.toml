@@ -10,14 +10,8 @@ winres = "0.1"
 [target.'cfg(windows)'.dependencies]
 win-kernel-driver = { git = "https://github.com/alex-dow/winRing0-rs" }
 win_ring0 = { git = "https://github.com/alex-dow/winRing0-rs" }
-
-[dependencies]
-common = { path = "../common" }
 adlx = "0.0.0-alpha.1"
-display-info = "0.5.7"
 is-admin = "0.1.4"
-nvml-wrapper = "0.11.0"
-sysinfo = "0.37.2"
 windows = { version = "0.57", features = [
     "Win32_Graphics_Dxgi",
     "Win32_Foundation",
@@ -27,4 +21,12 @@ windows = { version = "0.57", features = [
     "Win32_System_Diagnostics_ToolHelp",
     "Win32_System_SystemInformation"
 ] }
+
+[target.'cfg(any(windows, target_os = "linux"))'.dependencies]
+nvml-wrapper = "0.11.0"
+
+[dependencies]
+common = { path = "../common" }
+display-info = "0.5.7"
+sysinfo = "0.37.2"
 battery = "0.7.8"

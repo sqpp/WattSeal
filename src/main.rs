@@ -33,6 +33,21 @@ fn spawn_ui(ui_child: &Mutex<Option<Child>>) -> Result<(), String> {
 }
 
 fn main() {
+    #[cfg(target_os = "windows")]
+    if !std::env::args().any(|a| a == "--ui") && !is_admin::is_admin() {
+        let exe = std::env::current_exe();
+        if let Ok(exe) = exe {
+            let args: Vec<String> = std::env::args().skip(1).collect();
+            let relaunched = runas::Command::new(&exe).args(&args).gui(true).status();
+            match relaunched {
+                Ok(status) if status.success() => return,
+                Ok(status) => eprintln!("Relaunch failed with status: {}", status),
+                Err(e) => eprintln!("Failed to relaunch with admin privileges: {}", e),
+            }
+        }
+        eprintln!("Running collector without administrator privileges.");
+    }
+
     if std::env::args().any(|a| a == "--ui") {
         if let Err(e) = ui::run() {
             eprintln!("UI error: {}", e);

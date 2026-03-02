@@ -2,16 +2,28 @@ use std::{cell::RefCell, collections::HashSet, rc::Rc};
 
 use common::types::{CpuInfo, InitialInfo};
 use sysinfo::System;
-use windows_cpu::WindowsCPUSensor;
 
 use super::{Sensor, SensorError, SensorType};
 use crate::database::{CPUData, SensorData};
 
+mod estimation;
+#[cfg(target_os = "linux")]
+mod linux_cpu;
 #[cfg(target_os = "windows")]
 mod windows_cpu;
 
+use estimation::EstimationCPUSensor;
+#[cfg(target_os = "linux")]
+use linux_cpu::LinuxCPUSensor;
+#[cfg(target_os = "windows")]
+use windows_cpu::WindowsCPUSensor;
+
 pub enum CPUOS {
+    #[cfg(target_os = "windows")]
     Windows(WindowsCPUSensor),
+    #[cfg(target_os = "linux")]
+    Linux(LinuxCPUSensor),
+    Estimation(EstimationCPUSensor),
 }
 
 pub struct CPUSensor {
@@ -21,16 +33,31 @@ pub struct CPUSensor {
 
 impl Sensor for CPUSensor {
     fn read_full_data(&self) -> Result<SensorData, SensorError> {
-        let mut power_data = match &self.sensor {
-            CPUOS::Windows(sensor) => sensor.read_full_data(),
-        }?;
-        if let SensorData::CPU(cpu_data) = power_data {
+        // Get CPU usage first (needed for estimation, always populated)
+        let usage_percent = {
             let mut sys = self
                 .system
                 .try_borrow_mut()
                 .map_err(|e| SensorError::ReadError(format!("Failed to borrow system: {}", e)))?;
             sys.refresh_cpu_usage();
-            let usage_percent = sys.global_cpu_usage() as f64;
+            sys.global_cpu_usage() as f64
+        };
+
+        let mut power_data = match &self.sensor {
+            #[cfg(target_os = "windows")]
+            CPUOS::Windows(sensor) => sensor.read_full_data()?,
+            #[cfg(target_os = "linux")]
+            CPUOS::Linux(sensor) => sensor.read_full_data()?,
+            CPUOS::Estimation(sensor) => SensorData::CPU(CPUData {
+                total_power_watts: Some(sensor.estimate(usage_percent)),
+                pp0_power_watts: None,
+                pp1_power_watts: None,
+                dram_power_watts: None,
+                usage_percent: None,
+            }),
+        };
+
+        if let SensorData::CPU(cpu_data) = power_data {
             power_data = SensorData::CPU(CPUData {
                 usage_percent: Some(usage_percent),
                 ..cpu_data
@@ -114,24 +141,55 @@ pub fn get_cpu_list(system: Rc<RefCell<System>>) -> Result<Vec<String>, String> 
         .collect())
 }
 
-pub fn get_cpu_power_sensor(system: Rc<RefCell<System>>, index: usize) -> Result<SensorType, SensorError> {
+pub fn get_cpu_power_sensor(
+    system: Rc<RefCell<System>>,
+    index: usize,
+    is_admin: bool,
+) -> Result<SensorType, SensorError> {
     let s = system
         .try_borrow_mut()
         .map_err(|e| SensorError::ReadError(format!("Failed to borrow system: {}", e)))?;
-    let cpu = s.cpus().get(index);
-    let vendor_id = match cpu {
-        None => return Err(SensorError::NotSupported),
-        Some(cpu_info) => cpu_info.vendor_id(),
-    };
-
+    let cpu = s.cpus().get(index).ok_or(SensorError::NotSupported)?;
+    let cpu_name = cpu.brand().to_string();
     #[cfg(target_os = "windows")]
-    return Ok(SensorType::CPU(CPUSensor {
-        sensor: CPUOS::Windows(WindowsCPUSensor::new(vendor_id)),
-        system: system.clone(),
-    }));
+    let vendor_id = cpu.vendor_id().to_string();
+    drop(s);
 
-    #[cfg(not(target_os = "windows"))]
-    return Err(SensorError::NotSupported);
+    // Try platform-specific sensor first, fall back to TDP estimation
+    #[cfg(target_os = "windows")]
+    if is_admin {
+        match WindowsCPUSensor::new(&vendor_id) {
+            Ok(sensor) => {
+                println!("✓ MSR sensor initialized successfully for vendor: {}", vendor_id);
+                return Ok(SensorType::CPU(CPUSensor {
+                    sensor: CPUOS::Windows(sensor),
+                    system: system.clone(),
+                }));
+            }
+            Err(e) => eprintln!("\u{26a0} MSR sensor unavailable ({:?}), falling back to estimation", e),
+        }
+    } else {
+        eprintln!("\u{26a0} Not running as Administrator, skipping MSR sensor (WinRing0 requires admin)");
+    }
+
+    #[cfg(target_os = "linux")]
+    match LinuxCPUSensor::new() {
+        Ok(sensor) => {
+            return Ok(SensorType::CPU(CPUSensor {
+                sensor: CPUOS::Linux(sensor),
+                system: system.clone(),
+            }));
+        }
+        Err(e) => eprintln!("\u{26a0} RAPL sensor unavailable ({:?}), falling back to estimation", e),
+    }
+    println!("\u{26a0} No direct CPU power sensor available, using estimation based on TDP and usage");
+
+    let tdp = estimation::lookup_tdp(&cpu_name);
+    println!("\u{26a0} Using TDP estimation ({:.0} W) for {}", tdp, cpu_name);
+    Ok(SensorType::CPU(CPUSensor {
+        sensor: CPUOS::Estimation(EstimationCPUSensor::new(tdp)),
+        system: system.clone(),
+    }))
 }
 
 #[cfg(test)]

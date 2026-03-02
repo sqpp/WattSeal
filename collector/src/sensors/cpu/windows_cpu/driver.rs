@@ -9,8 +9,10 @@ pub struct WinRing0Reader {
 impl WinRing0Reader {
     pub fn new() -> Result<Self, String> {
         println!("Initializing WinRing0 driver...");
-        let mut handler = panic::catch_unwind(|| WinRing0Reader { ring0: WinRing0::new() })
-            .unwrap_or_else(WinRing0Reader::free_stuck_driver);
+        let mut handler = match panic::catch_unwind(|| WinRing0Reader { ring0: WinRing0::new() }) {
+            Ok(handler) => handler,
+            Err(e) => Self::free_stuck_driver(e)?,
+        };
         println!("Installing WinRing0 driver...");
         handler.ring0.install().or_else(|_| handler.retry_install())?;
         println!("Opening WinRing0 driver...");
@@ -31,17 +33,18 @@ impl WinRing0Reader {
         Ok(())
     }
 
-    fn free_stuck_driver(_err: Box<dyn Any + Send>) -> Self {
+    fn free_stuck_driver(_: Box<dyn Any + Send>) -> Result<Self, String> {
         println!("WinRing0 initialization panicked. Freeing stuck driver...");
         // sc stop WinRing0_1_2_0
         Command::new("sc").args(["stop", "WinRing0_1_2_0"]).output().ok();
         println!("Stuck WinRing0 driver stopped successfully.");
-        let mut handler = WinRing0Reader { ring0: WinRing0::new() };
+        let mut handler = panic::catch_unwind(|| WinRing0Reader { ring0: WinRing0::new() })
+            .map_err(|e| format!("Failed to create WinRing0Reader after freeing driver: {:?}", e))?;
         match handler.ring0.uninstall() {
             Ok(_) => println!("Stuck WinRing0 driver uninstalled successfully."),
             Err(e) => println!("Error uninstalling stuck WinRing0 driver: {}", e),
         }
-        return handler;
+        return Ok(handler);
     }
 }
 

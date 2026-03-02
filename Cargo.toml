@@ -14,3 +14,7 @@ common = { path = "common" }
 tray-icon = "0.21.2"
 chrono = "0.4.43"
 winit = "0.30.12"
+
+[target.'cfg(windows)'.dependencies]
+is-admin = "0.1.4"
+runas = "1.2"
