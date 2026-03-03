@@ -101,7 +101,11 @@ impl DashboardPage {
                     .push(Text::new("W").size(FONT_SIZE_TITLE).class(TextStyle::Muted)),
             );
 
-        let total_energy_wh = all_time_data.total_energy_wh;
+        let total_energy_wh = all_time_data
+            .components
+            .get(TotalData::table_name_static())
+            .copied()
+            .unwrap_or(0.0);
         let carbon_grams = wh_to_co2_grams(total_energy_wh);
 
         let side = Column::new()

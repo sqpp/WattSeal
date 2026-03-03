@@ -106,10 +106,10 @@ impl Database {
         )?;
 
         tx.execute(
-            "CREATE TABLE IF NOT EXISTS all_time_data (
-                    id                 INTEGER PRIMARY KEY,
-                    total_energy_wh    REAL,
-                    duration_seconds   INTEGER
+            "CREATE TABLE IF NOT EXISTS component_all_time_data (
+                    id              INTEGER PRIMARY KEY,
+                    component_name  TEXT UNIQUE NOT NULL,
+                    total_energy_wh REAL NOT NULL DEFAULT 0.0
             )",
             [],
         )?;
@@ -189,17 +189,20 @@ impl Database {
         Ok(result)
     }
 
-    pub fn update_all_time_data(&mut self, energy_wh: f64, duration_seconds: i64) -> Result<(), DatabaseError> {
+    pub fn update_component_all_time_data(
+        &mut self,
+        component_name: &str,
+        energy_wh: f64,
+    ) -> Result<(), DatabaseError> {
         let tx = self.conn.transaction()?;
         let updated_rows = tx.execute(
-            "UPDATE all_time_data SET total_energy_wh = total_energy_wh + ?1, duration_seconds = duration_seconds + ?2 WHERE id = 1",
-            params![energy_wh, duration_seconds],
+            "UPDATE component_all_time_data SET total_energy_wh = total_energy_wh + ?1 WHERE component_name = ?2",
+            params![energy_wh, component_name],
         )?;
-
         if updated_rows == 0 {
             tx.execute(
-                "INSERT INTO all_time_data (id, total_energy_wh, duration_seconds) VALUES (1, ?1, ?2)",
-                params![energy_wh, duration_seconds],
+                "INSERT INTO component_all_time_data (component_name, total_energy_wh) VALUES (?1, ?2)",
+                params![component_name, energy_wh],
             )?;
         }
         tx.commit()?;
@@ -341,14 +344,18 @@ impl Database {
     }
 
     pub fn get_all_time_data(&mut self) -> Result<AllTimeData, DatabaseError> {
-        let query = "SELECT * FROM all_time_data WHERE id=1";
-        let mut stmt = self.conn.prepare(query)?;
-        let result = stmt.query_row([], |row| {
-            let data = AllTimeData::from_row(row)?;
-            Ok(data)
-        })?;
-
-        Ok(result)
+        let mut components = HashMap::new();
+        if let Ok(mut stmt) = self
+            .conn
+            .prepare("SELECT component_name, total_energy_wh FROM component_all_time_data")
+        {
+            if let Ok(rows) = stmt.query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))) {
+                for row in rows.flatten() {
+                    components.insert(row.0, row.1);
+                }
+            }
+        }
+        Ok(AllTimeData { components })
     }
 
     pub fn execute_sensor_query<P>(

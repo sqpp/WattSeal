@@ -28,8 +28,8 @@ use crate::{
     },
     themes::AppTheme,
     translations::{
-        self, info_modal_all_time_power, info_modal_coming_soon, info_modal_current_power, info_modal_description,
-        info_modal_title, info_modal_top_consumer, info_modal_top_process, modal_close, na, window_title,
+        self, info_modal_all_time_power, info_modal_current_power, info_modal_description, info_modal_title,
+        info_modal_top_consumer, info_modal_top_process, modal_close, na, window_title,
     },
     types::{AppLanguage, TimeRange},
 };
@@ -51,6 +51,7 @@ pub struct App {
     theme: AppTheme,
     database: Database,
     all_time_data: AllTimeData,
+    tick_count: u64,
 }
 
 impl App {
@@ -93,6 +94,7 @@ impl App {
                 database,
                 hardware_info,
                 all_time_data,
+                tick_count: 0,
             },
             task,
         )
@@ -108,6 +110,19 @@ impl App {
                     }
                 }
                 self.refresh_all_time_data();
+                self.tick_count += 1;
+                if self.tick_count % 10 == 0 {
+                    let table_name = ProcessData::table_name_static();
+                    let time_range = self
+                        .sensors
+                        .get(table_name)
+                        .map(|s| s.current_time_range().clone())
+                        .unwrap_or_default();
+                    let process_data = self.load_process_data(time_range);
+                    if let Some(sensor) = self.sensors.get_mut(table_name) {
+                        sensor.load_history_batch(&process_data);
+                    }
+                }
                 Task::none()
             }
             Message::NavigateTo(page) => {
@@ -298,24 +313,29 @@ impl App {
                         .class(TextStyle::Primary),
                 );
 
-            content = content.push(power_row);
+            if target != ProcessData::table_name_static() {
+                content = content.push(power_row);
+            }
         }
 
-        let all_time_row = Row::new()
-            .spacing(SPACING_MEDIUM)
-            .align_y(Alignment::Center)
-            .push(
-                Text::new(info_modal_all_time_power(language))
-                    .size(FONT_SIZE_BODY)
-                    .class(TextStyle::Muted),
-            )
-            .push(
-                Text::new(info_modal_coming_soon(language))
-                    .size(FONT_SIZE_BODY)
-                    .class(TextStyle::Muted)
-                    .font(FONT_BOLD),
-            );
-        content = content.push(all_time_row);
+        if let Some(&energy) = self.all_time_data.components.get(target) {
+            let energy_text = format!("{:.1} Wh", energy.max(0.0));
+            let all_time_row = Row::new()
+                .spacing(SPACING_MEDIUM)
+                .align_y(Alignment::Center)
+                .push(
+                    Text::new(info_modal_all_time_power(language))
+                        .size(FONT_SIZE_BODY)
+                        .class(TextStyle::Muted),
+                )
+                .push(
+                    Text::new(energy_text)
+                        .size(FONT_SIZE_SUBTITLE)
+                        .font(FONT_BOLD)
+                        .class(TextStyle::Secondary),
+                );
+            content = content.push(all_time_row);
+        }
 
         if target == TotalData::table_name_static() {
             if let Some((name, power)) = self.find_top_consumer() {

@@ -1,4 +1,4 @@
-use std::{fmt::Display, time::SystemTime};
+use std::{collections::HashMap, fmt::Display, time::SystemTime};
 
 use serde::{Deserialize, Serialize};
 
@@ -30,23 +30,7 @@ impl Event {
 
 #[derive(Debug, Clone, Default)]
 pub struct AllTimeData {
-    pub total_energy_wh: f64,
-    pub duration_seconds: i64,
-}
-
-impl AllTimeData {
-    pub fn update(&mut self, power_watts: f64) {
-        self.total_energy_wh += power_watts;
-        self.duration_seconds += 1;
-    }
-
-    pub fn average_power(&self) -> f64 {
-        if self.duration_seconds > 0 {
-            self.total_energy_wh / self.duration_seconds as f64
-        } else {
-            0.0
-        }
-    }
+    pub components: HashMap<String, f64>,
 }
 
 #[derive(Debug, Clone)]

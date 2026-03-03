@@ -116,21 +116,20 @@ impl CollectorApp {
             let since_last_update_secs = self.last_update.elapsed().as_secs_f64();
             self.last_update = start_time;
             println!("\n--- Iteration {} ---", self.iteration);
-            let mut total_power = 0.0;
-            let event = create_event_from_sensors(&self.sensors, self.system.clone(), &mut total_power);
-            let energy_wh = total_power * since_last_update_secs / 3600.0;
+            let event = create_event_from_sensors(&self.sensors, self.system.clone());
 
             match self.database.insert_event(&event) {
                 Ok(_) => println!("✓ Event data saved to database"),
                 Err(e) => eprintln!("✗ Failed to save event data: {:?}", e),
             }
 
-            match self
-                .database
-                .update_all_time_data(energy_wh, since_last_update_secs.round() as i64)
-            {
-                Ok(_) => println!("✓ All-time data updated in database"),
-                Err(e) => eprintln!("✗ Failed to update all-time data: {:?}", e),
+            for sensor_data in event.data() {
+                if let Some(power) = sensor_data.total_power_watts() {
+                    let component_energy_wh = power * since_last_update_secs / 3600.0;
+                    let _ = self
+                        .database
+                        .update_component_all_time_data(sensor_data.table_name(), component_energy_wh);
+                }
             }
 
             for sensor_data in event.data().iter() {
@@ -145,10 +144,6 @@ impl CollectorApp {
             }
 
             self.iteration += 1;
-            println!(
-                "All-Time Energy over {} seconds: {:.3} Wh ({} W)",
-                since_last_update_secs, energy_wh, total_power
-            );
 
             // ADJUST SLEEP DURATION TO MAINTAIN 1 SECOND INTERVALS
             let elapsed_time = start_time.elapsed();

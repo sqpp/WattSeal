@@ -90,11 +90,7 @@ pub enum SensorError {
     ReadError(String),
 }
 
-pub fn create_event_from_sensors(
-    sensors: &Vec<SensorType>,
-    system: Rc<RefCell<System>>,
-    total_output: &mut f64,
-) -> Event {
+pub fn create_event_from_sensors(sensors: &Vec<SensorType>, system: Rc<RefCell<System>>) -> Event {
     let time = SystemTime::now();
     let mut data: Vec<SensorData> = Vec::new();
 
@@ -183,8 +179,6 @@ pub fn create_event_from_sensors(
         total_power_watts: total_power,
         period_type: "second".to_string(),
     }));
-
-    *total_output = total_power;
 
     cpu_usage /= nb_cpus.max(1) as f64;
     gpu_usage /= nb_gpus.max(1) as f64;

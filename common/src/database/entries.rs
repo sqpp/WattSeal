@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use rusqlite::{Row, ToSql};
 
 use crate::{
@@ -338,17 +340,16 @@ impl DatabaseEntry for AllTimeData {
     }
 
     fn insert_params<'a>(&'a self, _timestamp_id: &'a i64) -> Vec<&'a dyn ToSql> {
-        vec![&self.total_energy_wh, &self.duration_seconds]
+        vec![]
     }
 
     fn columns_static() -> &'static [(&'static str, &'static str)] {
-        &[("total_energy_wh", "REAL"), ("duration_seconds", "INTEGER")]
+        &[]
     }
 
-    fn from_row(row: &Row) -> rusqlite::Result<Self> {
+    fn from_row(_: &Row) -> rusqlite::Result<Self> {
         Ok(AllTimeData {
-            total_energy_wh: row.get("total_energy_wh")?,
-            duration_seconds: row.get("duration_seconds")?,
+            components: HashMap::new(),
         })
     }
 }

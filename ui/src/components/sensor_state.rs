@@ -5,7 +5,10 @@ use std::{
 };
 
 use chrono::{DateTime, Local, Timelike};
-use common::{DatabaseEntry, MetricType, ProcessData, SecondaryValues, SensorData, TotalData, utils::bytes_to_mb};
+use common::{
+    DatabaseEntry, DiskData, MetricType, NetworkData, ProcessData, RamData, SecondaryValues, SensorData, TotalData,
+    utils::bytes_to_mb,
+};
 use iced::{
     Alignment, ContentFit, Element, Length, Padding, Task,
     widget::{
@@ -97,10 +100,11 @@ struct ComponentState {
     secondary_histories: Vec<HistoryRef>,
     show_in_total: bool,
     metric_type: MetricType,
+    pending_initial_metric: Option<MetricType>,
 }
 
 impl ComponentState {
-    fn new(theme: AppTheme, display_name: &str, language: AppLanguage) -> Self {
+    fn new(theme: AppTheme, display_name: &str, language: AppLanguage, table_name: &str) -> Self {
         let mut power_graph = PowerChartState::new(theme, language);
         let metric_type = MetricType::default();
         power_graph
@@ -112,11 +116,15 @@ impl ComponentState {
             .chart
             .add_series(&key, &display, power_graph.line_type, Some(metric_type as usize));
         power_graph.chart.set_data(&key, power_graph.power_history.clone());
+
+        let pending_initial_metric = initial_metric_for_table(table_name);
+
         Self {
             power_graph,
             secondary_histories: Vec::new(),
             show_in_total: true,
             metric_type,
+            pending_initial_metric,
         }
     }
 
@@ -192,6 +200,7 @@ impl ComponentState {
             }
             _ => {
                 if let Some(secondary_values) = secondary_values {
+                    self.extend_secondary_histories(secondary_values.values.len());
                     for (i, labeled_value) in secondary_values.values.into_iter().enumerate() {
                         let key = format!("{} {}", display_name, labeled_value.label);
                         let display = chart_legend(language, labeled_value.label);
@@ -362,7 +371,7 @@ impl SensorState {
         } else if table_name == ProcessData::table_name_static() {
             SensorCategory::Processes(ProcessesState::new())
         } else {
-            SensorCategory::Component(ComponentState::new(theme, &display_name, language))
+            SensorCategory::Component(ComponentState::new(theme, &display_name, language, &table_name))
         };
 
         let mut state = Self {
@@ -403,6 +412,10 @@ impl SensorState {
         } else {
             None
         }
+    }
+
+    pub fn current_time_range(&self) -> &TimeRange {
+        &self.time_range
     }
 
     fn apply_time_range(&mut self, time_range: TimeRange) -> Task<Message> {
@@ -489,21 +502,27 @@ impl SensorState {
     }
 
     pub fn load_history_batch(&mut self, data: &[(DateTime<Local>, SensorData)]) {
-        match &mut self.sensor_category {
-            SensorCategory::Processes(state) => {
-                if let Some((_, SensorData::Process(processes))) = data.last() {
-                    state.update_from_snapshot(processes);
-                    println!("Loaded {} processes for '{}'", processes.len(), self.display_name);
-                }
+        if let SensorCategory::Processes(state) = &mut self.sensor_category {
+            if let Some((_, SensorData::Process(processes))) = data.last() {
+                state.update_from_snapshot(processes);
             }
-            _ => {
-                self.clear_data();
-                for (timestamp, sensor) in data {
-                    self.push_to_history_only(*timestamp, sensor);
+            return;
+        }
+
+        if let SensorCategory::Component(state) = &mut self.sensor_category {
+            if let Some(initial_metric) = state.pending_initial_metric.take() {
+                if let Some((_, sensor_data)) = data.last() {
+                    let secondary = sensor_data.secondary_values();
+                    state.update_metric_type(initial_metric, &self.display_name, self.language, secondary);
                 }
-                self.refresh_chart();
             }
         }
+
+        self.clear_data();
+        for (timestamp, sensor) in data {
+            self.push_to_history_only(*timestamp, sensor);
+        }
+        self.refresh_chart();
     }
 
     pub fn update_theme(&mut self, theme: AppTheme) {
@@ -575,10 +594,22 @@ impl SensorState {
             .on_press(Message::OpenInfoModal(self.table_name.clone()))
             .padding(Padding::from([2, 8]));
 
-        let mut controls = Row::new()
-            .spacing(SPACING_MEDIUM)
-            .align_y(Alignment::Center)
-            .push(self.time_range_selector());
+        let mut controls = Row::new().spacing(SPACING_MEDIUM).align_y(Alignment::Center);
+
+        if !self.time_range.is_real_time() {
+            let refresh_button: Button<'b, Message, AppTheme> =
+                button(Text::new("↻").size(FONT_SIZE_BODY).font(FONT_BOLD))
+                    .class(ButtonStyle::Standard)
+                    .on_press(Message::FetchChartData(
+                        self.table_name.clone(),
+                        self.time_range.clone(),
+                    ))
+                    .padding(Padding::from([2, 8]));
+            controls = controls.push(refresh_button);
+        }
+
+        controls = controls.push(self.time_range_selector());
+
         if let Some(extra) = extra_control {
             controls = controls.push(extra);
         }
@@ -869,5 +900,15 @@ fn prune_history(history: &HistoryRef, cutoff: DateTime<Local>) {
         while borrowed.front().is_some_and(|&(ts, _)| ts < cutoff) {
             borrowed.pop_front();
         }
+    }
+}
+
+fn initial_metric_for_table(table_name: &str) -> Option<MetricType> {
+    if table_name == RamData::table_name_static() {
+        Some(MetricType::Usage)
+    } else if table_name == DiskData::table_name_static() || table_name == NetworkData::table_name_static() {
+        Some(MetricType::Speed)
+    } else {
+        None
     }
 }
