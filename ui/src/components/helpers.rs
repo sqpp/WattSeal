@@ -1,8 +1,8 @@
 use iced::{
     Element, Length,
     widget::{
-        Column, Container, Row, Text, center, mouse_area, opaque, stack,
-        text::{self, Catalog},
+        Text, center, mouse_area, opaque, stack,
+        text::{self},
     },
 };
 
@@ -10,11 +10,11 @@ use crate::{
     message::Message,
     styles::{
         container::ContainerStyle,
-        style_constants::{FONT_BOLD, FONT_SIZE_BODY, FONT_SIZE_SMALL},
+        style_constants::{FONT_BOLD, FONT_SIZE_BODY},
         text::TextStyle,
     },
     themes::AppTheme,
-    translations::{self, no_data_available},
+    translations::no_data_available,
     types::AppLanguage,
 };
 

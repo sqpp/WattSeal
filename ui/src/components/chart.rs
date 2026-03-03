@@ -4,22 +4,19 @@ use std::{
     rc::Rc,
 };
 
-use chrono::{DateTime, Duration, Local, TimeZone, Timelike};
-use common::SensorData;
+use chrono::{DateTime, Duration, Local, Timelike};
 use iced::{
     Element, Length, Point, Rectangle, Size,
-    advanced::graphics::text::cosmic_text::skrifa::color,
     alignment::Alignment,
     event::Status,
     mouse::{self, Cursor},
     widget::{
-        Column, Text,
+        Column,
         canvas::{self, Cache, Event, Frame, Geometry},
     },
 };
 use plotters::{
     coord::Shift,
-    data,
     prelude::ChartBuilder,
     style::{Color, RGBAColor, RGBColor},
 };
@@ -29,7 +26,7 @@ use plotters_iced2::{Chart, ChartWidget, DrawingArea, Renderer, plotters_backend
 use crate::{
     message::Message,
     themes::AppTheme,
-    translations::{self, tooltip_time, tooltip_value},
+    translations::{tooltip_time, tooltip_value},
     types::AppLanguage,
 };
 
@@ -49,7 +46,7 @@ const TOOLTIP_WIDTH: f32 = 160.0;
 const TOOLTIP_MIN_HEIGHT: f32 = 60.0;
 const TOOLTIP_PADDING: f32 = 8.0;
 const TOOLTIP_OFFSET: f32 = 20.0;
-const TOOLTIP_CORNER_RADIUS: f32 = 4.0;
+// const TOOLTIP_CORNER_RADIUS: f32 = 4.0;
 const TOOLTIP_LINE_HEIGHT: f32 = 16.0;
 
 #[derive(Debug, Clone, Copy)]

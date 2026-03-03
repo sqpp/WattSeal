@@ -1,11 +1,11 @@
 use iced::{
-    Background, Border, Color, Shadow, Vector,
+    Background, Border, Shadow,
     overlay::menu::{Catalog as MenuCatalog, Style as MenuStyle},
     widget::pick_list::{Catalog as PickListCatalog, Status, Style as ListStyle},
 };
 
 use super::{
-    colors::{ExtendedPalette, blend, with_alpha},
+    colors::{ExtendedPalette, blend},
     style_constants::{BORDER_RADIUS_SMALL, BORDER_WIDTH},
 };
 use crate::themes::AppTheme;

@@ -1,10 +1,10 @@
-use std::{cell::RefCell, fmt::format};
+use std::cell::RefCell;
 
 use sysinfo::Networks;
 
 use crate::{
     database::{NetworkData, SensorData},
-    sensors::{Sensor, SensorError, network},
+    sensors::{Sensor, SensorError},
 };
 
 const NIC_IDLE_W: f64 = 0.2;

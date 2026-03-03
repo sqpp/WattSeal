@@ -1,4 +1,4 @@
-#![allow(dead_code, unused_imports)]
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::{
     process::{Child, Command},
@@ -41,33 +41,24 @@ fn main() {
             let relaunched = runas::Command::new(&exe).args(&args).gui(true).status();
             match relaunched {
                 Ok(status) if status.success() => return,
-                Ok(status) => eprintln!("Relaunch failed with status: {}", status),
-                Err(e) => eprintln!("Failed to relaunch with admin privileges: {}", e),
+                _ => {}
             }
         }
-        eprintln!("Running collector without administrator privileges.");
     }
 
     if std::env::args().any(|a| a == "--ui") {
-        if let Err(e) = ui::run() {
-            eprintln!("UI error: {}", e);
-        }
+        let _ = ui::run();
         return;
     }
 
     let (tx, rx) = mpsc::channel();
 
     thread::spawn(move || {
-        println!("Starting collector...");
         let mut app = match CollectorApp::new() {
             Ok(app) => app,
-            Err(e) => {
-                eprintln!("Failed to create CollectorApp: {}", e);
-                return;
-            }
+            Err(_) => return,
         };
-        if let Err(e) = app.initialize() {
-            eprintln!("Failed to initialize collector: {}", e);
+        if app.initialize().is_err() {
             return;
         }
         tx.send(()).unwrap_or_default();
@@ -80,10 +71,7 @@ fn main() {
     // Create event loop for tray icon
     let event_loop = match EventLoop::new() {
         Ok(loop_handle) => loop_handle,
-        Err(e) => {
-            eprintln!("Failed to create event loop: {}", e);
-            return;
-        }
+        Err(_) => return,
     };
 
     // Build tray menu
@@ -135,25 +123,16 @@ fn main() {
 
     let icon = tray_icon::Icon::from_rgba(vec![0, 255, 0, 0], 1, 1).ok();
 
-    let _tray_icon = if let Some(icon) = icon {
+    let _tray_icon = icon.and_then(|icon| {
         TrayIconBuilder::new()
             .with_menu(Box::new(tray_menu))
             .with_tooltip("WattAware")
             .with_icon(icon)
             .build()
-            .map_err(|e| {
-                eprintln!("Failed to create tray icon: {}", e);
-                e
-            })
             .ok()
-    } else {
-        eprintln!("Failed to create tray icon: invalid icon data");
-        None
-    };
+    });
 
     spawn_ui(&ui_child).ok();
-
-    println!("Collector running. Use the tray icon to open the UI.");
 
     // Run the event loop (pumps Windows messages for tray icon)
     struct TrayApp;

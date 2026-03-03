@@ -18,3 +18,10 @@ winit = "0.30.12"
 [target.'cfg(windows)'.dependencies]
 is-admin = "0.1.4"
 runas = "1.2"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

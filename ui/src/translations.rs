@@ -1,6 +1,4 @@
-use common::{
-    CPUData, DatabaseEntry, DiskData, GPUData, MetricType, NetworkData, ProcessData, RamData, SensorData, TotalData,
-};
+use common::{CPUData, DatabaseEntry, DiskData, GPUData, MetricType, NetworkData, ProcessData, RamData, TotalData};
 
 use crate::types::{AppLanguage, TimeRange};
 

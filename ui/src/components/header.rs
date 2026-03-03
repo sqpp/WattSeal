@@ -1,6 +1,6 @@
 use iced::{
     Alignment, Element, Length, Padding,
-    widget::{Column, Container, Row, Text, button},
+    widget::{Container, Row, Text, button},
 };
 
 use crate::{
@@ -9,7 +9,7 @@ use crate::{
     styles::{
         button::ButtonStyle,
         container::ContainerStyle,
-        style_constants::{FONT_BOLD, FONT_SIZE_BODY, FONT_SIZE_HEADER, PADDING_LARGE, PADDING_MEDIUM, SPACING_MEDIUM},
+        style_constants::{FONT_BOLD, FONT_SIZE_BODY, FONT_SIZE_HEADER, PADDING_LARGE, PADDING_MEDIUM},
     },
     themes::AppTheme,
     translations::settings_title,

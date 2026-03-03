@@ -12,7 +12,7 @@ use common::{
 use iced::{
     Alignment, ContentFit, Element, Length, Padding, Task,
     widget::{
-        Button, Column, Container, PickList, Row, Scrollable, Space, Text, button, image, pick_list,
+        Button, Column, Container, Row, Scrollable, Space, Text, button, image, pick_list,
         scrollable::{Direction, Scrollbar},
     },
 };
@@ -29,15 +29,15 @@ use crate::{
         picklist::PickListStyle,
         scrollable::ScrollableStyle,
         style_constants::{
-            FONT_BOLD, FONT_SIZE_BODY, FONT_SIZE_SMALL, FONT_SIZE_SUBTITLE, PADDING_LARGE, SPACING_LARGE,
-            SPACING_MEDIUM, SPACING_SMALL, SPACING_XLARGE,
+            FONT_BOLD, FONT_SIZE_BODY, FONT_SIZE_SUBTITLE, PADDING_LARGE, SPACING_LARGE, SPACING_MEDIUM, SPACING_SMALL,
+            SPACING_XLARGE,
         },
         text::TextStyle,
     },
     themes::AppTheme,
     translations::{
-        self, TranslatedMetricType, TranslatedTimeRange, application, cpu, disk_read, disk_write, gpu,
-        metric_type_name, na, power_or_energy, power_or_energy_label, ram, sensor_name, translate_label,
+        TranslatedMetricType, TranslatedTimeRange, application, cpu, disk_read, disk_write, gpu, metric_type_name, na,
+        power_or_energy, power_or_energy_label, ram, sensor_name, translate_label,
     },
     types::{AppLanguage, TimeRange},
 };
@@ -115,7 +115,7 @@ impl PowerChartState {
 struct ComponentState {
     power_graph: PowerChartState,
     secondary_histories: Vec<HistoryRef>,
-    show_in_total: bool,
+    _show_in_total: bool,
     metric_type: MetricType,
     pending_initial_metric: Option<MetricType>,
 }
@@ -128,7 +128,7 @@ impl ComponentState {
         Self {
             power_graph,
             secondary_histories: Vec::new(),
-            show_in_total: true,
+            _show_in_total: true,
             metric_type: MetricType::default(),
             pending_initial_metric: initial_metric_for_table(table_name),
         }
@@ -273,7 +273,7 @@ impl ComponentState {
 
 struct TotalState {
     power_graph: PowerChartState,
-    tooltip_history: TooltipHistoryRef,
+    _tooltip_history: TooltipHistoryRef,
 }
 
 impl TotalState {
@@ -282,7 +282,7 @@ impl TotalState {
         power_graph.init_power_series(display_name, language);
         Self {
             power_graph,
-            tooltip_history: Rc::new(RefCell::new(VecDeque::new())),
+            _tooltip_history: Rc::new(RefCell::new(VecDeque::new())),
         }
     }
 

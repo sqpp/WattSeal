@@ -4,28 +4,25 @@ use common::{AllTimeData, DatabaseEntry, ProcessData, TotalData};
 use iced::{
     Alignment, Element, Length, Padding,
     alignment::{Horizontal, Vertical},
-    widget::{Button, Column, Container, Row, Scrollable, Text, button, grid, rule},
+    widget::{Column, Container, Row, Scrollable, Text, rule},
 };
 
 use crate::{
     components::{helpers::no_data_placeholder, sensor_state::SensorState},
     message::Message,
     styles::{
-        button::ButtonStyle,
         container::ContainerStyle,
         scrollable::ScrollableStyle,
         style_constants::{
             FONT_BOLD, FONT_SIZE_BODY, FONT_SIZE_LARGE, FONT_SIZE_SUBTITLE, FONT_SIZE_TITLE, PADDING_LARGE,
-            PADDING_MEDIUM, SPACING_LARGE, SPACING_MEDIUM, SPACING_SMALL, SPACING_XLARGE,
+            PADDING_MEDIUM, SPACING_LARGE, SPACING_SMALL, SPACING_XLARGE,
         },
         text::TextStyle,
     },
     themes::AppTheme,
-    translations::{self, all_time, current_power_consumption, emissions, zero_carbon_intensity_warning},
+    translations::{all_time, current_power_consumption, emissions, zero_carbon_intensity_warning},
     types::{AppLanguage, CarbonIntensity},
 };
-
-const MAX_COMPONENT_CARD_WIDTH: f32 = 600.0;
 
 pub struct DashboardPage;
 

@@ -3,9 +3,7 @@ use std::collections::HashMap;
 use rusqlite::{Row, ToSql};
 
 use crate::{
-    types::{
-        AllTimeData, CPUData, DiskData, GPUData, GeneralData, NetworkData, ProcessData, RamData, SensorData, TotalData,
-    },
+    types::{AllTimeData, CPUData, DiskData, GPUData, NetworkData, ProcessData, RamData, SensorData, TotalData},
     utils::load_icon_and_name,
 };
 
@@ -354,11 +352,9 @@ impl DatabaseEntry for AllTimeData {
     }
 }
 
+#[cfg(test)]
 mod tests {
-    use super::{
-        AllTimeData, CPUData, DatabaseEntry, DiskData, GPUData, NetworkData, ProcessData, RamData, SensorData,
-        TotalData,
-    };
+    use super::{CPUData, DatabaseEntry, DiskData, GPUData, NetworkData, ProcessData, RamData, SensorData, TotalData};
 
     #[test]
     fn zero_defaults_are_zero_filled() {

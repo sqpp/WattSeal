@@ -1,6 +1,6 @@
 use iced::{
     Color,
-    widget::svg::{self, Catalog, Status, Style},
+    widget::svg::{Catalog, Status, Style},
 };
 
 use crate::themes::AppTheme;

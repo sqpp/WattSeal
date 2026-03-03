@@ -1,5 +1,4 @@
-use core::time;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime};
 
 use rusqlite::{OptionalExtension, params};
 
@@ -12,30 +11,21 @@ pub fn averaging_and_purging_data(
     average_until_time: i64,
     purge_until_time: i64,
 ) -> Result<(), String> {
+    #[cfg(debug_assertions)]
     let start = Instant::now();
-    averaging_total_data(database, average_until_time)
-        .map_err(|e| format!("Failed to average total data: {}", e))
-        .ok();
-    println!(
-        "Time to average total data: {:.2?}",
-        Instant::now().duration_since(start)
-    );
-
+    let _ = averaging_total_data(database, average_until_time);
+    #[cfg(debug_assertions)]
+    println!("Averaging total data took {} millis", start.elapsed().as_millis());
+    #[cfg(debug_assertions)]
     let start = Instant::now();
-    averaging_process_data(database, average_until_time)
-        .map_err(|e| format!("Failed to average process data: {}", e))
-        .ok();
-    println!(
-        "Time to average process data: {:.2?}",
-        Instant::now().duration_since(start)
-    );
-
+    let _ = averaging_process_data(database, average_until_time);
+    #[cfg(debug_assertions)]
+    println!("Averaging process data took {} millis", start.elapsed().as_millis());
+    #[cfg(debug_assertions)]
     let start = Instant::now();
-    purge_old_events(database, purge_until_time)
-        .map_err(|e| format!("Failed to purge data: {}", e))
-        .ok();
-    println!("Time to purge data {:.2?}", Instant::now().duration_since(start));
-
+    let _ = purge_old_events(database, purge_until_time);
+    #[cfg(debug_assertions)]
+    println!("Purging old events took {} millis", start.elapsed().as_millis());
     Ok(())
 }
 
@@ -58,19 +48,8 @@ fn averaging_total_data(database: &mut Database, duration_in_hours: i64) -> Resu
 
     let first_timestamp = match first_timestamp {
         Some(ts) => ts,
-        None => {
-            println!("No data to average");
-            return Ok(());
-        }
+        None => return Ok(()),
     };
-
-    println!(
-        "First timestamp to average: {} ({}), cutoff end timestamp: {} ({})",
-        first_timestamp,
-        get_datetime_from_ts(first_timestamp),
-        cutoff_end_timestamp,
-        get_datetime_from_ts(cutoff_end_timestamp)
-    );
 
     let first_bucket_end = next_oclock(first_timestamp);
 
@@ -174,7 +153,6 @@ fn averaging_process_data(database: &mut Database, duration_in_hours: i64) -> Re
         .unwrap_or(false);
 
     if !has_rows {
-        println!("No process data to average");
         return Ok(());
     }
 
@@ -306,10 +284,4 @@ fn next_oclock(timestamp_millis: i64) -> i64 {
     } else {
         timestamp_millis - ms_after_oclock + HOUR_MS
     }
-}
-
-fn get_datetime_from_ts(timestamp_millis: i64) -> String {
-    let datetime = UNIX_EPOCH + time::Duration::from_millis(timestamp_millis as u64);
-    let datetime: chrono::DateTime<chrono::Utc> = datetime.into();
-    datetime.format("%Y-%m-%d %H:%M:%S").to_string()
 }

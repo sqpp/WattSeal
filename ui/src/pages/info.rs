@@ -1,7 +1,7 @@
 use common::{CPUData, DatabaseEntry, DiskData, GPUData, HardwareInfo, RamData};
 use iced::{
-    Color, Element, Length, Padding,
-    widget::{Column, Container, Row, Scrollable, Space},
+    Element, Length, Padding,
+    widget::{Column, Container, Row, Scrollable},
 };
 
 use crate::{
@@ -14,12 +14,11 @@ use crate::{
     },
     themes::AppTheme,
     translations::{
-        self, all_time, battery, battery_status, capacity, capacity_wh_cycles, capacity_wh_only, cores,
-        cores_and_threads, cpu, current_power_consumption, disk, disk_information, disk_n, disk_read, disk_write,
-        display, emissions, gpu, graphics_information, graphics_processor_n, hostname, memory, mode, model, na,
-        na_with_cycles, name, operating_system, os_information, primary_display, processor_information, ram,
-        ram_information, screen_information, secondary_display, space, storage, swap, system, total_memory,
-        translate_label,
+        self, battery, battery_status, capacity, capacity_wh_cycles, capacity_wh_only, cores, cores_and_threads, cpu,
+        disk, disk_information, disk_n, display, gpu, graphics_information, graphics_processor_n, hostname, memory,
+        mode, model, na, na_with_cycles, name, operating_system, os_information, primary_display,
+        processor_information, ram_information, screen_information, secondary_display, space, storage, swap, system,
+        total_memory,
     },
     types::AppLanguage,
 };

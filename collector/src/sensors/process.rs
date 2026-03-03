@@ -1,14 +1,8 @@
-use std::{
-    cell::RefCell,
-    collections::HashMap,
-    rc::Rc,
-    thread,
-    time::{Duration, Instant},
-};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use sysinfo::{Pid, Process, System};
 
-use crate::sensors::{ProcessData, cpu, process};
+use crate::sensors::ProcessData;
 
 pub fn get_processes(
     system: Rc<RefCell<System>>,

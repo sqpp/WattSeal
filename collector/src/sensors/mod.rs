@@ -5,14 +5,9 @@ pub mod network;
 pub mod process;
 pub mod ram;
 
-use std::{
-    cell::RefCell,
-    collections::HashMap,
-    rc::Rc,
-    time::{Instant, SystemTime},
-};
+use std::{cell::RefCell, collections::HashMap, rc::Rc, time::SystemTime};
 
-use battery::{Battery, Manager};
+use battery::Manager;
 pub use common::{
     AllTimeData, Event, GPUData, GeneralData, ProcessData, SensorData, TotalData,
     types::{BatteryInfo, CpuInfo, DiskInfo, HardwareInfo, InitialInfo, MemoryInfo, ScreenInfo, SystemInfo},
@@ -149,7 +144,10 @@ pub fn create_event_from_sensors(sensors: &Vec<SensorType>, system: Rc<RefCell<S
                 }
                 data.push(d);
             }
+            #[cfg(debug_assertions)]
             Err(e) => eprintln!("✗ Error reading sensor data: {:?}", e),
+            #[cfg(not(debug_assertions))]
+            Err(_) => {}
         }
     }
 
@@ -183,7 +181,6 @@ pub fn create_event_from_sensors(sensors: &Vec<SensorType>, system: Rc<RefCell<S
     cpu_usage /= nb_cpus.max(1) as f64;
     gpu_usage /= nb_gpus.max(1) as f64;
 
-    let timer = Instant::now();
     let top10_process_data: Vec<ProcessData> = get_processes(
         system.clone(),
         cpu_power,
@@ -195,7 +192,6 @@ pub fn create_event_from_sensors(sensors: &Vec<SensorType>, system: Rc<RefCell<S
         proc_gpu_usage,
     );
     data.push(SensorData::Process(top10_process_data));
-    println!("Process time: {} ms", timer.elapsed().as_millis());
 
     return Event::new(time, data);
 }
@@ -208,16 +204,20 @@ pub fn get_hardware_info(sensors: &Vec<SensorType>) -> GeneralData {
     for sensor in sensors {
         tables.push(sensor.table_name().to_string());
 
-        if let Ok(name) = sensor.read_name() {
-            detected_materials.push(name);
-        } else {
-            eprintln!("✗ No name available for sensor: {:?}", sensor.table_name());
+        match sensor.read_name() {
+            Ok(name) => detected_materials.push(name),
+            #[cfg(debug_assertions)]
+            Err(_) => eprintln!("✗ No name available for sensor: {:?}", sensor.table_name()),
+            #[cfg(not(debug_assertions))]
+            Err(_) => {}
         }
 
-        if let Ok(info) = sensor.read_initial_info() {
-            sensors_info.push(info);
-        } else {
-            eprintln!("✗ Failed to read initial info for sensor: {:?}", sensor.table_name());
+        match sensor.read_initial_info() {
+            Ok(info) => sensors_info.push(info),
+            #[cfg(debug_assertions)]
+            Err(_) => eprintln!("✗ Failed to read initial info for sensor: {:?}", sensor.table_name()),
+            #[cfg(not(debug_assertions))]
+            Err(_) => {}
         }
     }
 
@@ -295,16 +295,4 @@ pub fn get_hardware_info(sensors: &Vec<SensorType>) -> GeneralData {
     };
 
     return data;
-}
-
-fn disk_kind_label(kind: &sysinfo::Disk) -> &'static str {
-    if kind.is_removable() {
-        "Removable"
-    } else {
-        match kind.kind() {
-            sysinfo::DiskKind::HDD => "HDD",
-            sysinfo::DiskKind::SSD => "SSD",
-            _ => "Unknown",
-        }
-    }
 }

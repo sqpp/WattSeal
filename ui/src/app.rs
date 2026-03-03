@@ -6,12 +6,9 @@ use common::{
     generic_name_for_table,
 };
 use iced::{
-    Alignment, Element, Length, Padding, Subscription, Task,
+    Alignment, Element, Length, Subscription, Task,
     time::{Duration, every},
-    widget::{
-        Button, Column, Container, Row, Scrollable, Space, Text, button, center, image, mouse_area, opaque, pick_list,
-        stack, text_input,
-    },
+    widget::{Button, Column, Container, Row, Scrollable, Text, button, image, pick_list, stack, text_input},
 };
 
 use crate::{
@@ -22,17 +19,16 @@ use crate::{
         button::ButtonStyle,
         container::ContainerStyle,
         style_constants::{
-            FONT_BOLD, FONT_SIZE_BODY, FONT_SIZE_HEADER, FONT_SIZE_SMALL, FONT_SIZE_SUBTITLE, PADDING_LARGE,
-            PADDING_XLARGE, SPACING_LARGE, SPACING_MEDIUM, SPACING_SMALL,
+            FONT_BOLD, FONT_SIZE_BODY, FONT_SIZE_HEADER, FONT_SIZE_SMALL, FONT_SIZE_SUBTITLE, PADDING_XLARGE,
+            SPACING_LARGE, SPACING_MEDIUM, SPACING_SMALL,
         },
         text::TextStyle,
     },
     themes::AppTheme,
     translations::{
-        self, custom_carbon_invalid, custom_carbon_placeholder, info_modal_all_time_power, info_modal_current_power,
+        custom_carbon_invalid, custom_carbon_placeholder, info_modal_all_time_power, info_modal_current_power,
         info_modal_description, info_modal_title, info_modal_top_consumer, info_modal_top_process, modal_close, na,
-        settings_carbon_intensity, settings_language, setup_choose_carbon, setup_choose_language, setup_confirm,
-        setup_welcome_title, window_title,
+        setup_choose_carbon, setup_choose_language, setup_confirm, setup_welcome_title, window_title,
     },
     types::{AppLanguage, CarbonIntensity, TimeRange},
 };
@@ -270,10 +266,6 @@ impl App {
             }
             _ => Task::none(),
         }
-    }
-
-    fn get_hardware_info(&mut self) -> Result<HardwareInfo, DatabaseError> {
-        self.database.get_hardware_info()
     }
 
     fn load_latest_data(&mut self, n: i64) -> Vec<(DateTime<Local>, SensorData)> {

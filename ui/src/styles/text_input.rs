@@ -1,5 +1,5 @@
 use iced::{
-    Background, Border, Color,
+    Background, Border,
     widget::text_input::{Catalog, Status, Style},
 };
 

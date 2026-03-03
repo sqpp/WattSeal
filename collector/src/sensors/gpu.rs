@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use common::types::InitialInfo;
 
 use super::{Sensor, SensorError, SensorType};
-use crate::database::{GPUData, SensorData};
+use crate::database::SensorData;
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum GPUVendor {
@@ -30,7 +30,7 @@ impl GPUVendor {
 
 #[cfg(target_os = "windows")]
 pub fn get_gpu_list() -> Vec<String> {
-    use windows::{Win32::Graphics::Dxgi::*, core::Result};
+    use windows::Win32::Graphics::Dxgi::*;
 
     let mut list = Vec::new();
 
@@ -159,12 +159,7 @@ impl GPUSensor {
 
 #[cfg(target_os = "windows")]
 mod amd_gpu {
-    use std::ops::Index;
-
-    use adlx::{
-        gpu::Gpu, gpu_list::GpuList, gpu_metrics::GpuMetrics, helper::AdlxHelper,
-        performance_monitoring_services::PerformanceMonitoringServices, system::System,
-    };
+    use adlx::{gpu_metrics::GpuMetrics, helper::AdlxHelper};
 
     use super::{Sensor, SensorError};
     use crate::database::{GPUData, SensorData};

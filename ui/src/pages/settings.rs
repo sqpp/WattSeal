@@ -9,15 +9,15 @@ use crate::{
         button::ButtonStyle,
         container::ContainerStyle,
         style_constants::{
-            FONT_BOLD, FONT_SIZE_BODY, FONT_SIZE_HEADER, FONT_SIZE_SUBTITLE, PADDING_LARGE, PADDING_MEDIUM,
-            PADDING_XLARGE, SPACING_LARGE,
+            FONT_BOLD, FONT_SIZE_BODY, FONT_SIZE_HEADER, FONT_SIZE_SUBTITLE, PADDING_MEDIUM, PADDING_XLARGE,
+            SPACING_LARGE,
         },
         text::TextStyle,
     },
     themes::AppTheme,
     translations::{
-        self, custom_carbon_invalid, custom_carbon_placeholder, modal_close, settings_carbon_intensity,
-        settings_general, settings_language, settings_theme, settings_title,
+        custom_carbon_invalid, custom_carbon_placeholder, modal_close, settings_carbon_intensity, settings_general,
+        settings_language, settings_theme, settings_title,
     },
     types::{AppLanguage, CarbonIntensity},
 };

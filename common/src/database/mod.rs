@@ -6,7 +6,7 @@ use std::{collections::HashMap, time::SystemTime};
 
 pub use entries::DatabaseEntry;
 pub use purge::averaging_and_purging_data;
-use rusqlite::{Connection, OptionalExtension, Row, Transaction, params};
+use rusqlite::{Connection, OptionalExtension, Transaction, params};
 
 use crate::{
     AllTimeData,
@@ -73,7 +73,8 @@ impl Database {
     pub fn new() -> Result<Self, DatabaseError> {
         let conn = Connection::open(DATABASE_PATH)?;
         conn.pragma_update(None, "journal_mode", "WAL")?;
-        conn.pragma_update(None, "synchronous", "OFF")?;
+        conn.pragma_update(None, "synchronous", "NORMAL")?;
+        conn.pragma_update(None, "busy_timeout", "5000")?;
 
         conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS ui_settings (
@@ -142,6 +143,35 @@ impl Database {
 
     pub fn get_tables(&self) -> Vec<String> {
         self.tables.clone().unwrap_or_default()
+    }
+
+    /// Insert an event and update component energy totals in a single transaction.
+    pub fn insert_event_and_update_energy(&mut self, event: &Event, since_last_secs: f64) -> Result<(), DatabaseError> {
+        let tx = self.conn.transaction()?;
+        tx.execute(
+            "INSERT INTO timestamp (timestamp, period_type) VALUES (?1, ?2)",
+            params![
+                event.time().duration_since(SystemTime::UNIX_EPOCH)?.as_millis() as i64,
+                1 as i64
+            ],
+        )?;
+        let timestamp_id = tx.last_insert_rowid();
+        for sensor_data in event.data() {
+            Self::insert_sensor_data(&tx, &timestamp_id, sensor_data)?;
+        }
+        // Batch energy updates in the same transaction
+        for sensor_data in event.data() {
+            if let Some(power) = sensor_data.total_power_watts() {
+                let energy_wh = power * since_last_secs / 3600.0;
+                tx.execute(
+                    "INSERT INTO component_all_time_data (component_name, total_energy_wh) VALUES (?1, ?2) \
+                     ON CONFLICT(component_name) DO UPDATE SET total_energy_wh = total_energy_wh + ?2",
+                    params![sensor_data.table_name(), energy_wh],
+                )?;
+            }
+        }
+        tx.commit()?;
+        Ok(())
     }
 
     pub fn insert_event(&mut self, event: &Event) -> Result<(), DatabaseError> {
