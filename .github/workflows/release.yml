@@ -31,12 +31,12 @@ jobs:
       - name: Package
         shell: pwsh
         run: |
-          Copy-Item target/release/wattseal.exe WattSeal-windows-x86_64.exe
+          Copy-Item target/release/wattseal.exe WattSeal-windows.exe
 
       - uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: WattSeal-windows-x86_64.exe
+          path: WattSeal-windows.exe
 
   build-linux:
     name: Build (Linux)
@@ -65,13 +65,13 @@ jobs:
 
       - name: Package
         run: |
-          cp target/release/wattseal WattSeal-linux-x86_64
-          chmod +x WattSeal-linux-x86_64
+          cp target/release/wattseal WattSeal-linux
+          chmod +x WattSeal-linux
 
       - uses: actions/upload-artifact@v4
         with:
           name: linux-build
-          path: WattSeal-linux-x86_64
+          path: WattSeal-linux
 
   build-macos:
     name: Build (macOS)
@@ -91,13 +91,13 @@ jobs:
 
       - name: Package
         run: |
-          cp target/release/wattseal WattSeal-macos-aarch64
-          chmod +x WattSeal-macos-aarch64
+          cp target/release/wattseal WattSeal-macos
+          chmod +x WattSeal-macos
 
       - uses: actions/upload-artifact@v4
         with:
           name: macos-build
-          path: WattSeal-macos-aarch64
+          path: WattSeal-macos
 
   release:
     name: Create GitHub Release
@@ -113,6 +113,6 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            WattSeal-windows-x86_64.exe
-            WattSeal-linux-x86_64
-            WattSeal-macos-aarch64
+            WattSeal-windows.exe
+            WattSeal-linux
+            WattSeal-macos
