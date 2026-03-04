@@ -1,6 +1,14 @@
 use collector::CollectorApp;
 
 fn main() {
+    let _singleton = match common::SingletonGuard::acquire() {
+        Ok(guard) => guard,
+        Err(msg) => {
+            eprintln!("{msg}");
+            return;
+        }
+    };
+
     let mut app = match CollectorApp::new() {
         Ok(app) => app,
         Err(e) => {

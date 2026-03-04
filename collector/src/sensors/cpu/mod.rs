@@ -13,6 +13,7 @@ mod linux_cpu;
 mod windows_cpu;
 
 use estimation::EstimationCPUSensor;
+pub use estimation::estimate_igpu_power;
 #[cfg(target_os = "linux")]
 use linux_cpu::LinuxCPUSensor;
 #[cfg(target_os = "windows")]

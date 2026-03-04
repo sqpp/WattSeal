@@ -4,6 +4,7 @@ use std::{
     process::{Child, Command},
     sync::{Arc, Mutex, mpsc},
     thread,
+    time::Duration,
 };
 
 use collector::CollectorApp;
@@ -51,6 +52,15 @@ fn main() {
         let _ = ui::run();
         return;
     }
+
+    // Prevent a second collector from running
+    let _singleton = match common::SingletonGuard::acquire() {
+        Ok(guard) => guard,
+        Err(msg) => {
+            eprintln!("{msg}");
+            return;
+        }
+    };
 
     let (tx, rx) = mpsc::channel();
 
@@ -134,6 +144,32 @@ fn main() {
     });
 
     spawn_ui(&ui_child).ok();
+
+    // Monitor the UI child process: if it exits with EXIT_CODE_SHUTDOWN_ALL
+    // (user chose "Close everything"), shut down the whole application.
+    let ui_child_watcher = Arc::clone(&ui_child);
+    thread::spawn(move || {
+        loop {
+            thread::sleep(Duration::from_millis(250));
+            let mut guard = match ui_child_watcher.lock() {
+                Ok(g) => g,
+                Err(_) => continue,
+            };
+            if let Some(child) = guard.as_mut() {
+                match child.try_wait() {
+                    Ok(Some(status)) => {
+                        let code = status.code().unwrap_or(0);
+                        // Child exited – clear the handle
+                        *guard = None;
+                        if code == common::EXIT_CODE_SHUTDOWN_ALL {
+                            std::process::exit(0);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+    });
 
     // Run the event loop (pumps Windows messages for tray icon)
     /// Minimal event-loop handler for the system tray icon.

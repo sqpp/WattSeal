@@ -29,4 +29,7 @@ pub enum Message {
     OpenInfoModal(String),
     CloseInfoModal,
     ConfirmSetup,
+    CloseRequested,
+    CloseUIOnly,
+    CloseAll,
 }

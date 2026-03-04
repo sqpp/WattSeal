@@ -99,6 +99,8 @@ pub fn create_event_from_sensors(sensors: &Vec<SensorType>, system: Rc<RefCell<S
 
     let mut total_power = 0.0;
     let mut integrated_gpu_power: Option<f64> = None;
+    let mut has_pp1_source = false;
+    let mut integrated_gpu_indices: Vec<usize> = Vec::new();
     let mut proc_gpu_usage = HashMap::new();
     for sensor in sensors {
         match sensor {
@@ -123,6 +125,7 @@ pub fn create_event_from_sensors(sensors: &Vec<SensorType>, system: Rc<RefCell<S
             Ok(mut d) => {
                 if let SensorData::CPU(ref mut cpu) = d {
                     if let Some(pp1) = cpu.pp1_power_watts.take() {
+                        has_pp1_source = true;
                         if pp1 > 0.0 {
                             if let Some(ref mut total) = cpu.total_power_watts {
                                 *total -= pp1;
@@ -147,6 +150,14 @@ pub fn create_event_from_sensors(sensors: &Vec<SensorType>, system: Rc<RefCell<S
                         nb_gpus += 1;
                     }
                 }
+
+                // Track integrated Intel GPUs for estimation fallback.
+                if let SensorType::GPU(gpu_sensor) = sensor {
+                    if gpu_sensor.is_integrated() {
+                        integrated_gpu_indices.push(data.len());
+                    }
+                }
+
                 data.push(d);
             }
             #[cfg(debug_assertions)]
@@ -156,6 +167,8 @@ pub fn create_event_from_sensors(sensors: &Vec<SensorType>, system: Rc<RefCell<S
         }
     }
 
+    // --- Integrated-GPU power resolution ---
+    // Priority 1: Real PP1 reading from MSR (WinRing0).
     if let Some(igpu_power) = integrated_gpu_power {
         let merged = data.iter_mut().any(|d| {
             if let SensorData::GPU(gpu) = d {
@@ -176,6 +189,21 @@ pub fn create_event_from_sensors(sensors: &Vec<SensorType>, system: Rc<RefCell<S
         }
         gpu_power += igpu_power;
         total_power += igpu_power;
+    }
+
+    // Priority 2: Estimate iGPU power from usage when PP1 is unavailable.
+    if !has_pp1_source {
+        for &idx in &integrated_gpu_indices {
+            if let SensorData::GPU(ref mut gpu) = data[idx] {
+                if gpu.total_power_watts.is_none() {
+                    if let Some(usage) = gpu.usage_percent {
+                        let estimated = cpu::estimate_igpu_power(usage);
+                        gpu.total_power_watts = Some(estimated);
+                        gpu_power += estimated;
+                    }
+                }
+            }
+        }
     }
 
     data.push(SensorData::Total(TotalData {

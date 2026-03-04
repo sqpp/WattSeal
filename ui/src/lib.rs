@@ -20,5 +20,6 @@ pub fn run() -> iced::Result {
         .default_font(Font::with_name("Roboto"))
         .subscription(App::subscription)
         .theme(App::theme)
+        .exit_on_close_request(false)
         .run()
 }

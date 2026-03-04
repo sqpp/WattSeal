@@ -6,9 +6,10 @@ use common::{
     generic_name_for_table,
 };
 use iced::{
-    Alignment, Element, Length, Subscription, Task,
+    Alignment, Element, Length, Subscription, Task, event,
     time::{Duration, every},
     widget::{Button, Column, Container, Row, Scrollable, Text, button, image, pick_list, stack, text_input},
+    window,
 };
 
 use crate::{
@@ -26,9 +27,10 @@ use crate::{
     },
     themes::AppTheme,
     translations::{
-        custom_carbon_invalid, custom_carbon_placeholder, info_modal_all_time_power, info_modal_current_power,
-        info_modal_description, info_modal_title, info_modal_top_consumer, info_modal_top_process, modal_close, na,
-        setup_choose_carbon, setup_choose_language, setup_confirm, setup_welcome_title, window_title,
+        close_dialog_description, close_dialog_title, close_everything, close_ui_only, custom_carbon_invalid,
+        custom_carbon_placeholder, info_modal_all_time_power, info_modal_current_power, info_modal_description,
+        info_modal_title, info_modal_top_consumer, info_modal_top_process, modal_close, na, setup_choose_carbon,
+        setup_choose_language, setup_confirm, setup_welcome_title, window_title,
     },
     types::{AppLanguage, CarbonIntensity, TimeRange},
 };
@@ -55,6 +57,7 @@ pub struct App {
     database: Database,
     all_time_data: AllTimeData,
     tick_count: u64,
+    show_close_dialog: bool,
 }
 
 impl App {
@@ -115,6 +118,7 @@ impl App {
                 hardware_info,
                 all_time_data,
                 tick_count: 0,
+                show_close_dialog: false,
             },
             task,
         )
@@ -267,6 +271,14 @@ impl App {
                 self.persist_ui_settings();
                 Task::none()
             }
+            Message::CloseRequested => {
+                self.show_close_dialog = true;
+                Task::none()
+            }
+            Message::CloseUIOnly => iced::exit(),
+            Message::CloseAll => {
+                std::process::exit(common::EXIT_CODE_SHUTDOWN_ALL);
+            }
             _ => Task::none(),
         }
     }
@@ -340,6 +352,8 @@ impl App {
             )
         } else if self.show_setup {
             modal(content, self.setup_view(), Message::ConfirmSetup)
+        } else if self.show_close_dialog {
+            modal(content, self.close_dialog_view(), Message::CloseUIOnly)
         } else if let Some(ref target) = self.info_modal_open {
             modal(content, self.info_modal_view(target), Message::CloseInfoModal)
         } else {
@@ -492,9 +506,18 @@ impl App {
             .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
     }
 
-    /// Produces a 1 Hz tick for real-time data updates.
+    /// Produces a 1 Hz tick and listens for window-close requests.
     pub fn subscription(&self) -> Subscription<Message> {
-        every(Duration::from_millis(1000 / FPS)).map(|_| Message::Tick)
+        Subscription::batch([
+            every(Duration::from_millis(1000 / FPS)).map(|_| Message::Tick),
+            event::listen_with(|evt, _status, _id| {
+                if let iced::Event::Window(window::Event::CloseRequested) = evt {
+                    Some(Message::CloseRequested)
+                } else {
+                    None
+                }
+            }),
+        ])
     }
 
     /// Returns the localized window title.
@@ -517,6 +540,40 @@ impl App {
         let _ = self
             .database
             .save_ui_settings(self.language.code(), self.carbon_intensity.g_per_kwh);
+    }
+
+    fn close_dialog_view(&self) -> Element<'_, Message, AppTheme> {
+        let language = self.language;
+
+        let title = Text::new(close_dialog_title(language))
+            .size(FONT_SIZE_HEADER)
+            .font(FONT_BOLD)
+            .width(Length::Fill);
+
+        let description = Text::new(close_dialog_description(language)).size(FONT_SIZE_BODY);
+
+        let ui_only_btn = button(Text::new(close_ui_only(language)).size(FONT_SIZE_BODY))
+            .class(ButtonStyle::Standard)
+            .on_press(Message::CloseUIOnly);
+
+        let close_all_btn = button(Text::new(close_everything(language)).size(FONT_SIZE_BODY))
+            .class(ButtonStyle::Standard)
+            .on_press(Message::CloseAll);
+
+        let buttons = Row::new().spacing(SPACING_MEDIUM).push(ui_only_btn).push(close_all_btn);
+
+        let content = Column::new()
+            .spacing(SPACING_LARGE)
+            .align_x(Alignment::Start)
+            .push(title)
+            .push(description)
+            .push(buttons);
+
+        Container::new(content)
+            .width(Length::Fixed(520.0))
+            .padding(PADDING_XLARGE)
+            .class(ContainerStyle::ModalCard)
+            .into()
     }
 
     fn setup_view(&self) -> Element<'_, Message, AppTheme> {

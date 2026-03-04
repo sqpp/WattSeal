@@ -94,7 +94,7 @@ pub enum GPUSensor {
     #[cfg(target_os = "windows")]
     Amd(amd_gpu::AmdGPUSensor),
     #[cfg(target_os = "windows")]
-    Intel(intel_gpu::IntelGPUSensor),
+    Intel { sensor: intel_gpu::IntelGPUSensor },
 }
 
 impl Sensor for GPUSensor {
@@ -105,7 +105,7 @@ impl Sensor for GPUSensor {
             #[cfg(target_os = "windows")]
             GPUSensor::Amd(sensor) => sensor.read_full_data(),
             #[cfg(target_os = "windows")]
-            GPUSensor::Intel(sensor) => sensor.read_full_data(),
+            GPUSensor::Intel { sensor, .. } => sensor.read_full_data(),
             #[cfg(not(any(target_os = "windows", target_os = "linux")))]
             _ => Err(SensorError::NotSupported),
         }
@@ -129,7 +129,9 @@ pub fn get_gpu_power_sensor(vendor_id: &str, index: u32) -> Result<SensorType, S
         let sensor = match vendor {
             GPUVendor::Amd => Ok(GPUSensor::Amd(amd_gpu::AmdGPUSensor::new(index)?)),
             GPUVendor::Nvidia => Ok(GPUSensor::Nvidia(nvidia_gpu::NvidiaGPUSensor::new(index)?)),
-            GPUVendor::Intel => Ok(GPUSensor::Intel(intel_gpu::IntelGPUSensor::new(index)?)),
+            GPUVendor::Intel => Ok(GPUSensor::Intel {
+                sensor: intel_gpu::IntelGPUSensor::new(index)?,
+            }),
             GPUVendor::Other => Err(SensorError::NotSupported),
         };
         return sensor.map(SensorType::GPU);
@@ -157,9 +159,18 @@ impl GPUSensor {
             #[cfg(any(target_os = "windows", target_os = "linux"))]
             GPUSensor::Nvidia(sensor) => sensor.get_processes_gpu_usage(current_timestamp),
             #[cfg(target_os = "windows")]
-            GPUSensor::Amd(_) | GPUSensor::Intel(_) => Err(SensorError::NotSupported),
+            GPUSensor::Amd(_) | GPUSensor::Intel { .. } => Err(SensorError::NotSupported),
             #[cfg(not(any(target_os = "windows", target_os = "linux")))]
             _ => Err(SensorError::NotSupported),
+        }
+    }
+
+    /// Returns `true` when this GPU is a known integrated GPU model.
+    pub fn is_integrated(&self) -> bool {
+        match self {
+            #[cfg(target_os = "windows")]
+            GPUSensor::Intel { .. } => true,
+            _ => false,
         }
     }
 }

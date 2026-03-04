@@ -64,6 +64,11 @@ static TDP_TABLE: &[(&str, f64)] = &[
 const DEFAULT_TDP: f64 = 65.0;
 const DEFAULT_BOOST_MULTIPLIER: f64 = 1.25;
 
+/// Typical max power budget for an Intel integrated GPU (watts).
+const IGPU_DEFAULT_TDP: f64 = 15.0;
+/// Idle power floor for an integrated GPU (watts).
+const IGPU_IDLE_POWER: f64 = 0.01;
+
 /// Looks up the TDP for a CPU model name, falling back to a default.
 pub fn lookup_tdp(cpu_name: &str) -> f64 {
     let name_lower = cpu_name.to_lowercase();
@@ -85,6 +90,15 @@ pub fn estimate_power(tdp: f64, usage_percent: f64) -> f64 {
     let tdp_idle = tdp * 0.2;
     let tdp_peak = tdp * DEFAULT_BOOST_MULTIPLIER;
     tdp_idle + (tdp_peak - tdp_idle) * usage_frac.powf(1.6)
+}
+
+/// Estimates integrated-GPU power from usage percentage.
+///
+/// Uses a non-linear curve similar to [`estimate_power`] with a fixed
+/// 15 W typical TDP and a 0.01 W idle floor.
+pub fn estimate_igpu_power(usage_percent: f64) -> f64 {
+    let frac = (usage_percent / 100.0).clamp(0.0, 1.0);
+    IGPU_IDLE_POWER + (IGPU_DEFAULT_TDP - IGPU_IDLE_POWER) * frac.powf(1.5)
 }
 
 /// TDP-based CPU power estimator.
