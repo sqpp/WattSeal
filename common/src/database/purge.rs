@@ -1,4 +1,6 @@
-use std::time::{Duration, Instant, SystemTime};
+#[cfg(debug_assertions)]
+use std::time::Instant;
+use std::time::{Duration, SystemTime};
 
 use rusqlite::{OptionalExtension, params};
 

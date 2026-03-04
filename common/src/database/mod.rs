@@ -200,11 +200,20 @@ impl Database {
     /// Insert hardware info if line with id=1 doesn't exist, otherwise update it
     pub fn insert_hardware_info(&mut self, data: &GeneralData) -> Result<(), DatabaseError> {
         let tx = self.conn.transaction()?;
-        let existing: Option<String> = tx
-            .query_row("SELECT hardware_data FROM hardware_info WHERE id = 1", [], |row| {
-                row.get(0)
-            })
+
+        tx.execute(
+            "CREATE TABLE IF NOT EXISTS hardware_info (
+                    id                 INTEGER PRIMARY KEY,
+                    tables             TEXT,
+                    hardware_data      TEXT
+            )",
+            [],
+        )?;
+
+        let existing: Option<i64> = tx
+            .query_row("SELECT id FROM hardware_info WHERE id = 1", [], |row| row.get(0))
             .optional()?;
+
         if let Some(_) = existing {
             tx.execute(
                 "UPDATE hardware_info SET tables = ?1, hardware_data = ?2 WHERE id = 1",
@@ -216,6 +225,7 @@ impl Database {
                 params![data.tables, data.hardware_info_serialized],
             )?;
         }
+
         tx.commit()?;
         Ok(())
     }
