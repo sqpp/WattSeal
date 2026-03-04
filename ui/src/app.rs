@@ -60,7 +60,7 @@ pub struct App {
 impl App {
     /// Initializes the app, opens the database, and loads settings.
     pub fn new() -> (Self, Task<Message>) {
-        let theme = AppTheme::EcoEnergy;
+        let theme = AppTheme::DeepOcean;
         let current_page = Page::Dashboard;
         let mut database = Database::new().expect("Failed to create database");
 
