@@ -8,9 +8,9 @@
 
 WattSeal watches every component inside your machine (CPU, GPU, memory, disks, network) and shows you a live breakdown of power consumption, which apps are the biggest energy hogs, and how your usage changes over time.
 
-[![Windows](https://img.shields.io/badge/Windows-x86__64-0078D4?style=flat-square&logo=windows)](https://github.com/TODO/wattseal/releases)
-[![Linux](https://img.shields.io/badge/Linux-x86__64-FCC624?style=flat-square&logo=linux&logoColor=black)](https://github.com/TODO/wattseal/releases)
-[![macOS](https://img.shields.io/badge/macOS-aarch64-000000?style=flat-square&logo=apple)](https://github.com/TODO/wattseal/releases)
+[![Windows](https://img.shields.io/badge/Windows-x86__64-0078D4?style=flat-square&logo=windows)](https://github.com/daminoup88/wattseal/releases)
+[![Linux](https://img.shields.io/badge/Linux-x86__64-FCC624?style=flat-square&logo=linux&logoColor=black)](https://github.com/daminoup88/wattseal/releases)
+[![macOS](https://img.shields.io/badge/macOS-aarch64-000000?style=flat-square&logo=apple)](https://github.com/daminoup88/wattseal/releases)
 
 
 </div>
@@ -35,7 +35,7 @@ Most people have no idea how much electricity their computer actually uses, or w
 
 ### Step 1 — Download
 
-Grab the latest release for your operating system from the **[Releases page](https://github.com/TODO/wattseal/releases)**:
+Grab the latest release for your operating system from the **[Releases page](https://github.com/daminoup88/wattseal/releases)**:
 
 | Your system | File to download |
 |---|---|
@@ -191,7 +191,7 @@ The collector and UI share the same SQLite database file via WAL (Write-Ahead Lo
 
 Clone the repository:
 ```bash
-git clone https://github.com/TODO/wattseal.git
+git clone https://github.com/daminoup88/wattseal.git
 ```
 
 ```bash

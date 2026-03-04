@@ -14,7 +14,6 @@ macro_rules! define_themes {
             $($custom,)+
             // $($builtin,)+
         }
-
         impl AppTheme {
             pub fn to_iced_theme(self) -> Theme {
                 match self {
@@ -22,18 +21,15 @@ macro_rules! define_themes {
                     $(AppTheme::$custom => Theme::custom(String::from($name), $palette),)+
                 }
             }
-
             pub fn name(self) -> &'static str {
                 match self {
                     // $(AppTheme::$builtin => stringify!($builtin),)+
                     $(AppTheme::$custom => $name,)+
                 }
             }
-
             pub const fn all() -> &'static [AppTheme] {
                 &[/*$(AppTheme::$builtin,)+*/ $(AppTheme::$custom,)+]
             }
-
             pub const fn custom_themes() -> &'static [AppTheme] {
                 &[$(AppTheme::$custom,)+]
             }
