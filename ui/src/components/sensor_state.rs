@@ -353,6 +353,7 @@ enum SensorCategory {
     Processes(ProcessesState),
 }
 
+/// Per-sensor UI state holding chart data, time range, and latest reading.
 pub struct SensorState {
     table_name: String,
     display_name: String,
@@ -363,6 +364,7 @@ pub struct SensorState {
 }
 
 impl SensorState {
+    /// Creates a sensor state for the given table and display name.
     pub fn new(table_name: String, display_name: String, theme: AppTheme, language: AppLanguage) -> Self {
         let sensor_category = if table_name == TotalData::table_name_static() {
             SensorCategory::Total(TotalState::new(theme, &display_name, language))
@@ -384,18 +386,22 @@ impl SensorState {
         state
     }
 
+    /// Returns the display name.
     pub fn name(&self) -> &str {
         &self.display_name
     }
 
+    /// Returns the database table name.
     pub fn table_name(&self) -> &str {
         &self.table_name
     }
 
+    /// Returns the most recent sensor reading.
     pub fn get_latest_reading(&self) -> Option<&SensorData> {
         self.latest_reading.as_ref()
     }
 
+    /// Returns the highest-power process, if this is a process sensor.
     pub fn get_top_process(&self) -> Option<&ProcessData> {
         if let SensorCategory::Processes(state) = &self.sensor_category {
             state.top_processes.first()
@@ -404,6 +410,7 @@ impl SensorState {
         }
     }
 
+    /// Returns the cached icon handle for a process.
     pub fn get_process_icon(&self, process: &ProcessData) -> Option<image::Handle> {
         if let SensorCategory::Processes(state) = &self.sensor_category {
             state.icon_handle_for(process)
@@ -412,6 +419,7 @@ impl SensorState {
         }
     }
 
+    /// Returns the active time range selection.
     pub fn current_time_range(&self) -> &TimeRange {
         &self.time_range
     }
@@ -456,6 +464,7 @@ impl SensorState {
         ))
     }
 
+    /// Switches to a new time range and fetches fresh data.
     pub fn update_time_range(&mut self, time_range: TimeRange) -> Task<Message> {
         if self.time_range == time_range {
             return Task::none();
@@ -463,6 +472,7 @@ impl SensorState {
         self.apply_time_range(time_range)
     }
 
+    /// Switches the displayed metric (power, usage, or speed).
     pub fn set_metric_type(&mut self, metric_type: MetricType) {
         if let SensorCategory::Component(state) = &mut self.sensor_category {
             let secondary_values = self.latest_reading.as_ref().and_then(|d| d.secondary_values());
@@ -476,6 +486,7 @@ impl SensorState {
         }
     }
 
+    /// Appends a real-time data point to the chart.
     pub fn push_data(&mut self, timestamp: DateTime<Local>, data: &SensorData) {
         if matches!(self.sensor_category, SensorCategory::Processes(_)) {
             return;
@@ -505,6 +516,7 @@ impl SensorState {
         }
     }
 
+    /// Adds a data point to history without updating the latest reading.
     pub fn push_to_history_only(&mut self, timestamp: DateTime<Local>, data: &SensorData) {
         let timestamp = timestamp.with_nanosecond(0).unwrap_or(timestamp);
         match &mut self.sensor_category {
@@ -514,6 +526,7 @@ impl SensorState {
         }
     }
 
+    /// Replaces chart data with a full history batch.
     pub fn load_history_batch(&mut self, data: &[(DateTime<Local>, SensorData)]) {
         if let SensorCategory::Processes(state) = &mut self.sensor_category {
             if let Some((_, SensorData::Process(processes))) = data.last() {
@@ -544,6 +557,7 @@ impl SensorState {
         self.refresh_chart();
     }
 
+    /// Updates chart colors to match the given theme.
     pub fn update_theme(&mut self, theme: AppTheme) {
         match &mut self.sensor_category {
             SensorCategory::Component(s) => s.power_graph.chart.update_style(theme),
@@ -552,6 +566,7 @@ impl SensorState {
         }
     }
 
+    /// Refreshes chart labels for the given language.
     pub fn update_language(&mut self, language: AppLanguage) {
         self.language = language;
         match &mut self.sensor_category {
@@ -573,6 +588,7 @@ impl SensorState {
         }
     }
 
+    /// Invalidates the draw cache to trigger a chart redraw.
     pub fn refresh_chart(&mut self) {
         match &mut self.sensor_category {
             SensorCategory::Component(s) => s.power_graph.chart.refresh_cache(),
@@ -858,6 +874,7 @@ impl SensorState {
             .into()
     }
 
+    /// Renders the sensor chart card with optional secondary metrics.
     pub fn sensor_visual_card<'b>(
         &'b self,
         title: Option<&'b str>,

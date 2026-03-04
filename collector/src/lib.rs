@@ -63,6 +63,7 @@ fn start_log_session() {
     log_to_file(SESSION_MARKER);
 }
 
+/// Background sensor-collection application.
 pub struct CollectorApp {
     database: Database,
     sensors: Vec<SensorType>,
@@ -73,6 +74,7 @@ pub struct CollectorApp {
 }
 
 impl CollectorApp {
+    /// Creates a new collector with a database connection.
     pub fn new() -> Result<Self, String> {
         let database = Database::new().map_err(|e| format!("Failed to create database: {e}"))?;
         let s = System::new_all();
@@ -86,6 +88,7 @@ impl CollectorApp {
         })
     }
 
+    /// Detects hardware sensors, creates database tables, and saves hardware info.
     pub fn initialize(&mut self) -> Result<(), String> {
         let is_admin = is_admin();
 
@@ -144,6 +147,7 @@ impl CollectorApp {
         Ok(())
     }
 
+    /// Runs the collection loop, sampling sensors every second.
     pub fn run(&mut self) {
         // Purge/averaging runs in a separate thread so collection starts immediately.
         thread::spawn(|| {
@@ -211,6 +215,7 @@ impl CollectorApp {
     }
 }
 
+/// Returns whether the current process has elevated/RAPL privileges.
 fn is_admin() -> bool {
     #[cfg(target_os = "windows")]
     {

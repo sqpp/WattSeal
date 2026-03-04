@@ -11,11 +11,13 @@ const NIC_IDLE_W: f64 = 0.2;
 const NIC_W_PER_MB_S: f64 = 0.01;
 const NIC_MAX_W: f64 = 3.0;
 
+/// Network interface sensor that estimates power from throughput.
 pub struct NetworkSensor {
     networks: RefCell<Networks>,
 }
 
 impl NetworkSensor {
+    /// Creates a sensor with an empty network list.
     pub fn new() -> Self {
         Self {
             networks: RefCell::new(Networks::new()),

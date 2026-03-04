@@ -12,6 +12,7 @@ pub mod types;
 
 use app::App;
 
+/// Launches the WattSeal GUI application.
 pub fn run() -> iced::Result {
     iced::application(App::new, App::update, App::view)
         .title(App::title)

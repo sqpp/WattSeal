@@ -64,6 +64,7 @@ static TDP_TABLE: &[(&str, f64)] = &[
 const DEFAULT_TDP: f64 = 65.0;
 const DEFAULT_BOOST_MULTIPLIER: f64 = 1.25;
 
+/// Looks up the TDP for a CPU model name, falling back to a default.
 pub fn lookup_tdp(cpu_name: &str) -> f64 {
     let name_lower = cpu_name.to_lowercase();
     for (pattern, tdp) in TDP_TABLE {
@@ -86,15 +87,18 @@ pub fn estimate_power(tdp: f64, usage_percent: f64) -> f64 {
     tdp_idle + (tdp_peak - tdp_idle) * usage_frac.powf(1.6)
 }
 
+/// TDP-based CPU power estimator.
 pub struct EstimationCPUSensor {
     tdp: f64,
 }
 
 impl EstimationCPUSensor {
+    /// Creates an estimator with the given TDP value.
     pub fn new(tdp: f64) -> Self {
         Self { tdp }
     }
 
+    /// Estimates current power draw from CPU usage percentage.
     pub fn estimate(&self, usage_percent: f64) -> f64 {
         estimate_power(self.tdp, usage_percent)
     }

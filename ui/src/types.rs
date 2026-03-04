@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use chrono::{DateTime, Duration, Local};
 
+/// Selectable time window for chart data display.
 #[derive(Default, Clone, PartialEq, Debug)]
 pub enum TimeRange {
     #[default]
@@ -14,6 +15,7 @@ pub enum TimeRange {
 }
 
 impl TimeRange {
+    /// Returns the total duration in seconds.
     pub fn seconds(&self) -> i64 {
         match self {
             TimeRange::LastMinute => 60,
@@ -25,6 +27,7 @@ impl TimeRange {
         }
     }
 
+    /// Returns the axis label unit for this range.
     pub fn unit(&self) -> &'static str {
         match self {
             TimeRange::LastMinute => "s",
@@ -36,6 +39,7 @@ impl TimeRange {
         }
     }
 
+    /// Returns the data aggregation window in seconds.
     pub fn granularity_seconds(&self) -> i64 {
         match self {
             TimeRange::LastMinute => 1,
@@ -47,6 +51,7 @@ impl TimeRange {
         }
     }
 
+    /// Returns true for the real-time (1 Hz) range.
     pub fn is_real_time(&self) -> bool {
         matches!(self, TimeRange::LastMinute)
     }
@@ -73,18 +78,22 @@ impl TimeRange {
         }
     }
 
+    /// Converts to a chrono Duration.
     pub fn duration_seconds(&self) -> Duration {
         Duration::seconds(self.seconds())
     }
 
+    /// Returns the start of this range relative to now.
     pub fn start_time(&self) -> DateTime<Local> {
         Local::now() - self.duration_seconds()
     }
 
+    /// Returns the current local time as end boundary.
     pub fn end_time(&self) -> DateTime<Local> {
         Local::now()
     }
 
+    /// Returns all available ranges for total power charts.
     pub fn all_total() -> &'static [TimeRange] {
         &[
             TimeRange::LastMinute,
@@ -96,6 +105,7 @@ impl TimeRange {
         ]
     }
 
+    /// Returns available ranges for per-component charts.
     pub fn all_component() -> &'static [TimeRange] {
         &[TimeRange::LastMinute, TimeRange::LastHour, TimeRange::Last24Hours]
     }
@@ -114,6 +124,7 @@ impl Display for TimeRange {
     }
 }
 
+/// Supported UI languages.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AppLanguage {
     #[default]
@@ -122,10 +133,12 @@ pub enum AppLanguage {
 }
 
 impl AppLanguage {
+    /// Returns all available languages.
     pub const fn all() -> &'static [AppLanguage] {
         &[AppLanguage::English, AppLanguage::French]
     }
 
+    /// Returns the ISO language code.
     pub fn code(self) -> &'static str {
         match self {
             AppLanguage::English => "EN",
@@ -133,6 +146,7 @@ impl AppLanguage {
         }
     }
 
+    /// Parses a language from its ISO code.
     pub fn from_code(code: &str) -> Self {
         match code {
             "EN" => AppLanguage::English,
@@ -202,10 +216,12 @@ impl CarbonIntensity {
         },
     ];
 
+    /// Returns true if this is a user-defined value.
     pub fn is_custom(self) -> bool {
         self.label == "Custom"
     }
 
+    /// Finds the matching preset or creates a custom entry.
     pub fn from_g_per_kwh(value: f64) -> Self {
         Self::PRESETS
             .iter()

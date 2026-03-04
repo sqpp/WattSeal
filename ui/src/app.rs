@@ -35,6 +35,7 @@ use crate::{
 
 const FPS: u64 = 1;
 
+/// Main application state managing pages, sensors, and database.
 pub struct App {
     current_page: Page,
     sensors: HashMap<String, SensorState>,
@@ -57,6 +58,7 @@ pub struct App {
 }
 
 impl App {
+    /// Initializes the app, opens the database, and loads settings.
     pub fn new() -> (Self, Task<Message>) {
         let theme = AppTheme::EcoEnergy;
         let current_page = Page::Dashboard;
@@ -118,6 +120,7 @@ impl App {
         )
     }
 
+    /// Handles incoming messages and returns follow-up tasks.
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Tick => {
@@ -308,6 +311,7 @@ impl App {
         )
     }
 
+    /// Builds the root UI element tree.
     pub fn view(&self) -> Element<'_, Message, AppTheme> {
         let page_content = match self.current_page {
             Page::Dashboard => {
@@ -488,14 +492,17 @@ impl App {
             .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
     }
 
+    /// Produces a 1 Hz tick for real-time data updates.
     pub fn subscription(&self) -> Subscription<Message> {
         every(Duration::from_millis(1000 / FPS)).map(|_| Message::Tick)
     }
 
+    /// Returns the localized window title.
     pub fn title(&self) -> String {
         window_title(self.language).to_string()
     }
 
+    /// Returns the active theme.
     pub fn theme(&self) -> AppTheme {
         self.theme
     }

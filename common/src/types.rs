@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::DatabaseEntry;
 
+/// Timestamped collection of sensor readings.
 #[derive(Debug, Clone)]
 pub struct Event {
     time: SystemTime,
@@ -11,28 +12,34 @@ pub struct Event {
 }
 
 impl Event {
+    /// Creates an event with the given timestamp and sensor data.
     pub fn new(time: SystemTime, data: Vec<SensorData>) -> Self {
         Event { time, data }
     }
 
+    /// Returns the event timestamp.
     pub fn time(&self) -> SystemTime {
         self.time
     }
 
+    /// Returns the list of sensor readings.
     pub fn data(&self) -> &Vec<SensorData> {
         &self.data
     }
 
+    /// Appends a sensor reading to this event.
     pub fn push_data(&mut self, data: SensorData) {
         self.data.push(data);
     }
 }
 
+/// Cumulative per-component energy totals.
 #[derive(Debug, Clone, Default)]
 pub struct AllTimeData {
     pub components: HashMap<String, f64>,
 }
 
+/// CPU power and usage readings.
 #[derive(Debug, Clone)]
 pub struct CPUData {
     pub total_power_watts: Option<f64>,
@@ -42,6 +49,7 @@ pub struct CPUData {
     pub usage_percent: Option<f64>,
 }
 
+/// GPU power and usage readings.
 #[derive(Debug, Clone)]
 pub struct GPUData {
     pub total_power_watts: Option<f64>,
@@ -49,6 +57,7 @@ pub struct GPUData {
     pub vram_usage_percent: Option<f64>,
 }
 
+/// RAM power and usage readings.
 #[derive(Debug, Clone)]
 pub struct RamData {
     pub total_power_watts: Option<f64>,
@@ -56,6 +65,7 @@ pub struct RamData {
     pub usage_percent: Option<f64>,
 }
 
+/// Disk power and I/O throughput readings.
 #[derive(Debug, Clone)]
 pub struct DiskData {
     pub total_power_watts: Option<f64>,
@@ -66,6 +76,7 @@ pub struct DiskData {
     pub write_usage_mb_s: f64,
 }
 
+/// Network power and throughput readings.
 #[derive(Debug, Clone)]
 pub struct NetworkData {
     pub total_power_watts: Option<f64>,
@@ -73,6 +84,7 @@ pub struct NetworkData {
     pub upload_speed_mb_s: f64,
 }
 
+/// Raw RGBA icon pixel data.
 #[derive(Debug, Clone)]
 pub struct IconData {
     pub width: u32,
@@ -80,6 +92,7 @@ pub struct IconData {
     pub pixels: Vec<u8>,
 }
 
+/// Per-application resource usage snapshot.
 #[derive(Debug, Clone)]
 pub struct ProcessData {
     pub app_name: String,
@@ -94,6 +107,7 @@ pub struct ProcessData {
     pub icon: Option<IconData>,
 }
 
+/// Tagged union of all sensor reading types.
 #[derive(Debug, Clone)]
 pub enum SensorData {
     CPU(CPUData),
@@ -105,12 +119,14 @@ pub enum SensorData {
     Process(Vec<ProcessData>),
 }
 
+/// Aggregated total power across all components.
 #[derive(Debug, Clone)]
 pub struct TotalData {
     pub total_power_watts: f64,
     pub period_type: String,
 }
 
+/// Hardware information variant collected at startup.
 pub enum InitialInfo {
     System(SystemInfo),
     CPU(CpuInfo),
@@ -121,12 +137,14 @@ pub enum InitialInfo {
     Battery(BatteryInfo),
 }
 
+/// Database metadata pairing table list with serialized hardware info.
 #[derive(Debug, Clone)]
 pub struct GeneralData {
     pub tables: String,
     pub hardware_info_serialized: String,
 }
 
+/// Complete hardware inventory of the system.
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct HardwareInfo {
     pub system: SystemInfo,
@@ -139,6 +157,7 @@ pub struct HardwareInfo {
 }
 
 impl HardwareInfo {
+    /// Serializes this hardware info to a JSON string.
     pub fn serialized(&self) -> String {
         match serde_json::to_string(self) {
             Ok(json_string) => json_string,
@@ -184,6 +203,7 @@ impl From<Vec<InitialInfo>> for HardwareInfo {
     }
 }
 
+/// Operating system and host information.
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct SystemInfo {
     pub os: String,
@@ -191,6 +211,7 @@ pub struct SystemInfo {
     pub is_virtual_machine: bool,
 }
 
+/// CPU model, vendor, and core count.
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct CpuInfo {
     pub name: String,
@@ -201,12 +222,14 @@ pub struct CpuInfo {
     pub architecture: String,
 }
 
+/// Total physical and swap memory sizes.
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct MemoryInfo {
     pub total_ram_bytes: u64,
     pub total_swap_bytes: u64,
 }
 
+/// Disk name, mount point, and capacity.
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct DiskInfo {
     pub name: String,
@@ -217,6 +240,7 @@ pub struct DiskInfo {
     pub used_bytes: u64,
 }
 
+/// Display model, resolution, and refresh rate.
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct ScreenInfo {
     pub model: String,
@@ -225,6 +249,7 @@ pub struct ScreenInfo {
     pub is_primary: bool,
 }
 
+/// Battery presence, capacity, and cycle count.
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct BatteryInfo {
     pub present: bool,
@@ -234,6 +259,7 @@ pub struct BatteryInfo {
     pub cycle_count: Option<u32>,
 }
 
+/// Category of a sensor value (power, usage, or speed).
 #[derive(Default, PartialEq, Clone, Copy, Debug)]
 pub enum MetricType {
     #[default]
@@ -253,6 +279,7 @@ impl Display for MetricType {
 }
 
 impl MetricType {
+    /// Returns the human-readable label.
     pub fn label(&self) -> &'static str {
         match self {
             MetricType::Power => "Power",
@@ -261,6 +288,7 @@ impl MetricType {
         }
     }
 
+    /// Returns the measurement unit string.
     pub fn unit(&self) -> &'static str {
         match self {
             MetricType::Power => "W",
@@ -269,10 +297,12 @@ impl MetricType {
         }
     }
 
+    /// Formats a chart legend label for the given component.
     pub fn legend(&self, component_name: &str) -> String {
         format!("{} {}", component_name, self.label())
     }
 
+    /// Returns the display unit, swapping W for Wh in energy mode.
     pub fn effective_unit(&self, energy_mode: bool) -> &'static str {
         if *self == MetricType::Power && energy_mode {
             "Wh"
@@ -282,12 +312,14 @@ impl MetricType {
     }
 }
 
+/// Named optional numeric value for secondary metrics.
 #[derive(Debug, Clone, Copy)]
 pub struct LabeledValue {
     pub label: &'static str,
     pub value: Option<f64>,
 }
 
+/// Collection of secondary metric values with their type.
 #[derive(Debug, Clone)]
 pub struct SecondaryValues {
     pub metric_type: MetricType,
@@ -299,10 +331,12 @@ impl SecondaryValues {
         Self { metric_type, values }
     }
 
+    /// Returns the list of labeled values.
     pub fn values(&self) -> &Vec<LabeledValue> {
         &self.values
     }
 
+    /// Returns the metric type of these secondary values.
     pub fn metric_type(&self) -> MetricType {
         self.metric_type
     }
@@ -326,6 +360,7 @@ impl LabeledValue {
 }
 
 impl SensorData {
+    /// Returns the display name of this sensor variant.
     pub fn sensor_type(&self) -> &'static str {
         match self {
             SensorData::CPU(_) => "CPU",
@@ -338,6 +373,7 @@ impl SensorData {
         }
     }
 
+    /// Returns the database table name for this variant.
     pub fn table_name(&self) -> &'static str {
         match self {
             SensorData::CPU(_) => CPUData::table_name_static(),
@@ -350,6 +386,7 @@ impl SensorData {
         }
     }
 
+    /// Returns the total power in watts, if available.
     pub fn total_power_watts(&self) -> Option<f64> {
         match self {
             SensorData::CPU(data) => data.total_power_watts,
@@ -380,6 +417,7 @@ impl SensorData {
         }
     }
 
+    /// Returns secondary metrics (usage or speed) if applicable.
     pub fn secondary_values(&self) -> Option<SecondaryValues> {
         let metric_type = self.secondary_metric()?;
         match self {
@@ -413,6 +451,7 @@ impl SensorData {
         }
     }
 
+    /// Returns the secondary metric type for this sensor variant.
     pub fn secondary_metric(&self) -> Option<MetricType> {
         match self {
             SensorData::CPU(_) | SensorData::GPU(_) | SensorData::Ram(_) => Some(MetricType::Usage),

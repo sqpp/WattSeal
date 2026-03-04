@@ -10,6 +10,7 @@ use super::{
 use crate::themes::AppTheme;
 
 #[derive(Debug, Clone, Copy, Default)]
+/// Button appearance variants.
 pub enum ButtonStyle {
     #[default]
     Standard,

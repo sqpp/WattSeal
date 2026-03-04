@@ -24,6 +24,7 @@ use crate::{
     types::{AppLanguage, CarbonIntensity},
 };
 
+/// Dashboard page showing total power, charts, and process summary.
 pub struct DashboardPage;
 
 impl DashboardPage {

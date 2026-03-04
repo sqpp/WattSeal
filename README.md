@@ -1,34 +1,226 @@
-# Power Monitor
+<div align="center">
 
-![Built with Iced badge]
+<img src="https://img.shields.io/badge/WattSeal-power%20monitor-00d4aa?style=for-the-badge&logoColor=white" alt="WattSeal" height="40"/>
 
-A system power consumption monitoring application built in Rust.
+# WattSeal
 
-## Architecture
+**See exactly how much power your computer is using, in real time.**
 
-The project is divided into two main components:
+WattSeal watches every component inside your machine (CPU, GPU, memory, disks, network) and shows you a live breakdown of power consumption, which apps are the biggest energy hogs, and how your usage changes over time.
 
-- **Collector**: A background service responsible for querying hardware sensors (CPU, GPU, RAM).
-- **UI**: A graphical interface built with Iced that visualizes the collected data in real-time.
-- **Common**: A module that holds common types and handles database interactions for storing and retrieving power consumption data.
+[![Windows](https://img.shields.io/badge/Windows-x86__64-0078D4?style=flat-square&logo=windows)](https://github.com/TODO/wattseal/releases)
+[![Linux](https://img.shields.io/badge/Linux-x86__64-FCC624?style=flat-square&logo=linux&logoColor=black)](https://github.com/TODO/wattseal/releases)
+[![macOS](https://img.shields.io/badge/macOS-aarch64-000000?style=flat-square&logo=apple)](https://github.com/TODO/wattseal/releases)
 
-![Overall Architecture](overall_architecture.svg)
 
-The power consumption has been tested with a Shelly Plug Gen3 S smart plug on various devices.
+</div>
 
-## Usage
+---
 
-To run the full application (Collector + UI):
+## Why use WattSeal?
 
+Most people have no idea how much electricity their computer actually uses, or which apps are silently draining power in the background. WattSeal gives you that visibility:
+
+- 🔍 **Live dashboard**: watch power draw update every second
+- 🧩 **Per-component breakdown**: CPU, GPU, RAM, storage, network
+- 📋 **Per-app breakdown**: find out which processes are costing you the most
+- 📈 **Historical charts**: spot trends over time
+- 💾 **Local database**: all your data stays on your machine, private
+
+> Power readings are validated against real hardware measurements using a [Shelly Plug Gen3 S](https://www.shelly.com/products/shelly-plug-s-gen3) smart plug.
+
+---
+
+## Getting Started
+
+### Step 1 — Download
+
+Grab the latest release for your operating system from the **[Releases page](https://github.com/TODO/wattseal/releases)**:
+
+| Your system | File to download |
+|---|---|
+| Windows (64-bit) | `WattSeal-windows-x86_64.exe` |
+| Linux (64-bit) | `WattSeal-linux-x86_64` |
+| macOS (Apple Silicon) | `WattSeal-macos-aarch64` |
+
+WattSeal is a single executable file — no installation needed. Just download it, and you're ready for the next step.
+
+---
+
+### Step 2 — Run it
+
+WattSeal doesn't need administrative privileges to run, but it does need them for precise CPU power measurements. If you skip the admin step, you'll still get power estimates based on CPU usage, but they won't be as accurate.
+
+<details>
+<summary><strong>🪟 Windows</strong></summary>
+
+1. Double-click the downloaded `WattSeal-windows-x86_64.exe` file
+2. If prompted by User Account Control (UAC), and you want the most accurate CPU power readings, click "Yes" to allow it to run with administrator privileges. If you click "No", it will still work but with less precise CPU power estimates.
+
+The app will launch in the system tray in the taskbar and the dashboard will open in a new window. If you close the dashboard, WattSeal will keep running in the background and you can reopen it by clicking the tray icon.
+
+</details>
+
+<details>
+<summary><strong>🐧 Linux</strong></summary>
+
+Open a terminal in the folder where you downloaded WattSeal and run:
+
+```bash
+chmod +x WattSeal-linux-x86_64
+sudo ./WattSeal-linux-x86_64
+```
+
+The `chmod` command makes the file runnable (only needed once). The `sudo` gives WattSeal access to RAPL energy sensors. If you run it without `sudo`, it will still work but with less accurate CPU power estimates.
+
+</details>
+
+<details>
+<summary><strong>🍎 macOS</strong></summary>
+
+Run the app normally, WattSeal will work without admin privileges.
+
+</details>
+
+---
+
+## What can WattSeal measure?
+
+| Component | How it's measured |
+|---|---|
+| **CPU (Intel / AMD)** | Direct hardware energy counters (RAPL) — very accurate |
+| **GPU (NVIDIA)** | NVML vendor API — very accurate |
+| **GPU (AMD, Windows)** | ADLX vendor API — very accurate |
+| **GPU (Intel, Windows)** | PDH performance counters |
+| **RAM** | Estimated from memory usage |
+| **Disk** | Estimated from read/write activity |
+| **Network** | Estimated from data throughput |
+| **Per-process** | CPU + GPU + I/O breakdown per app |
+
+> **What does "estimated" mean?** For components without built-in energy sensors, WattSeal calculates a best-guess power draw based on how hard the hardware is working and its known power specs. It's less precise than hardware counters, but still gives a solid picture.
+
+---
+
+## Platform Support
+
+With admin privileges, WattSeal provides the most comprehensive power monitoring experience possible on each platform:
+
+|  | Windows | Linux | macOS |
+|---|:---:|:---:|:---:|
+| Full application | ✅ | ✅ | ✅ |
+| CPU energy counters | ✅ RAPL | ✅ RAPL | Estimated |
+| NVIDIA GPU | ✅ | ✅ | ❌ |
+| AMD GPU | ✅ | ❌ | ❌ |
+| Intel GPU | ✅ | ❌ | ❌ |
+| Other sensors (usage, I/O) | ✅ | ✅ | ✅ |
+| Auto admin elevation | ✅ UAC | Manual (`sudo`) | Manual |
+
+<details>
+<summary><strong>Support without admin privileges</strong></summary>
+
+|  | Windows | Linux | macOS |
+|---|:---:|:---:|:---:|
+| Full application | ✅ | ✅ | ✅ |
+| CPU energy counters | Estimated | Estimated | Estimated |
+| NVIDIA GPU | ✅ | ✅ | ❌ |
+| AMD GPU | ✅ | ❌ | ❌ |
+| Intel GPU | ✅ | ❌ | ❌ |
+| Other sensors (usage, I/O) | ✅ | ✅ | ✅ |
+
+</details>
+
+---
+
+<br>
+
+# 🛠️ Developer Documentation
+<div align="center">
+
+[![Built with Rust](https://img.shields.io/badge/Built%20With-Rust-CE422B?style=flat-square&logo=rust)](https://www.rust-lang.org)
+[![Built with Iced](https://img.shields.io/badge/Built%20With%20Iced-3645FF?logo=iced&logoColor=fff)]()
+
+</div>
+
+The rest of this README is aimed at contributors and developers who want to build WattSeal from source, understand the architecture, or add new features.
+
+---
+
+## Architecture Overview
+
+WattSeal is a Rust workspace made up of three crates:
+
+```
+wattseal/               ← Root binary (tray icon, lifecycle management)
+  ├── collector/        ← Background sensor polling, power estimation, DB writes
+  ├── common/           ← Shared types, SQLite layer, utilities
+  └── ui/               ← Iced GUI (dashboard, hardware info, settings, charts)
+```
+
+**How the pieces fit together:**
+
+```mermaid
+flowchart TD
+  A[wattseal (root)<br>System tray icon<br>spawns collector thread<br>launches UI]
+  A -->|spawns| B[collector<br>Polls sensors @1Hz<br>Estimates power<br>Writes → SQLite]
+  A -->|launches| C[ui<br>Iced GUI, live charts<br>Per-process view<br>Reads ← SQLite]
+  B --> D[power_monitoring.db (WAL)]
+  C --> D
+```
+
+The collector and UI share the same SQLite database file via WAL (Write-Ahead Logging) mode, which allows concurrent reads and writes without locking.
+
+---
+
+## Prerequisites
+
+- **Rust** stable toolchain (version pinned in [`rust-toolchain.toml`](rust-toolchain.toml)).
+- You may need platform-specific dependencies (nothing needed for Windows).
+
+---
+
+## Building from Source
+
+Clone the repository:
+```bash
+git clone https://github.com/TODO/wattseal.git
+```
+
+```bash
+cd wattseal
+```
+
+Debug build and run:
 ```bash
 cargo run
 ```
 
-To run individual components, see:
-- [Collector](collector/README.md)
-- [UI](ui/README.md)
-- [Common](common/README.md)
+Release build:
+```bash
+cargo build --release
+```
 
-**Note**: The application requires Administrator privileges on Windows to access hardware sensors.
+> ⚠️ **Elevated privileges are required** to access hardware energy counters.
+> Run with administrator rights on Windows (will be prompted to elevate), or `sudo` on Linux.
 
-[Built with Iced badge]: https://img.shields.io/badge/Built%20With%20Iced-3645FF?logo=iced&logoColor=fff
+---
+
+## Project Layout
+
+| Path | What it does |
+|---|---|
+| `src/main.rs` | Entry point: admin elevation, tray icon, collector thread, UI subprocess |
+| `collector/` | All sensor implementations (CPU, GPU, RAM, disk, network, per-process) |
+| `common/` | Shared types (`Event`, `SensorData`, …), SQLite database layer, utilities |
+| `ui/` | Iced application: pages, components, charts, themes, translations |
+
+---
+
+## Code Style & Quality
+
+The project enforces the formatting and linting rules defined in `rustfmt.toml`. The compliance is checked in CI, and you can run the following commands locally to ensure your code meets the standards before pushing:
+
+```bash
+cargo +nightly fmt
+```
+
+> The `.vscode/settings.json` is configured to format on save, so if you're using VS Code, your code will be automatically formatted according to the project's style guidelines whenever you save a file.

@@ -4,6 +4,7 @@ use super::{CPUData, DiskData, GPUData, NetworkData, RamData, TotalData};
 use crate::sensors::SensorType;
 
 impl SensorType {
+    /// Returns the database table name for this sensor variant.
     pub fn table_name(&self) -> &'static str {
         match self {
             SensorType::CPU(_) => CPUData::table_name_static(),

@@ -2,11 +2,13 @@ use std::{any::Any, ffi::c_ulong, panic, process::Command};
 
 use win_ring0::WinRing0;
 
+/// Safe wrapper around the WinRing0 kernel driver for MSR access.
 pub struct WinRing0Reader {
     ring0: WinRing0,
 }
 
 impl WinRing0Reader {
+    /// Installs and opens the WinRing0 driver, recovering from stuck state if needed.
     pub fn new() -> Result<Self, String> {
         println!("Initializing WinRing0 driver...");
         let mut handler = match panic::catch_unwind(|| WinRing0Reader { ring0: WinRing0::new() }) {
@@ -21,10 +23,12 @@ impl WinRing0Reader {
         Ok(handler)
     }
 
+    /// Reads a Model-Specific Register by address.
     pub fn read_msr(&self, msr: c_ulong) -> Result<u64, String> {
         self.ring0.readMsr(msr)
     }
 
+    /// Uninstalls and re-installs the driver after a failed install.
     fn retry_install(&mut self) -> Result<(), String> {
         println!("Uninstalling existing WinRing0 driver...");
         self.ring0.uninstall()?;
@@ -33,6 +37,7 @@ impl WinRing0Reader {
         Ok(())
     }
 
+    /// Stops a stuck WinRing0 service and re-creates the reader.
     fn free_stuck_driver(_: Box<dyn Any + Send>) -> Result<Self, String> {
         println!("WinRing0 initialization panicked. Freeing stuck driver...");
         // sc stop WinRing0_1_2_0

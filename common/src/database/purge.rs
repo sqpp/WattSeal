@@ -6,6 +6,7 @@ use crate::database::Database;
 
 const HOUR_MS: i64 = 3600 * 1000;
 
+/// Aggregates old data into hourly buckets and purges raw records.
 pub fn averaging_and_purging_data(
     database: &mut Database,
     average_until_time: i64,

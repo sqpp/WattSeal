@@ -6,6 +6,7 @@ use iced::{
 use crate::themes::AppTheme;
 
 #[derive(Debug, Clone, Copy, Default)]
+/// SVG icon tinting variants.
 pub enum SvgStyle {
     #[default]
     Default,

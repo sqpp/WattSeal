@@ -11,6 +11,7 @@ pub struct LinuxCPUSensor {
 }
 
 impl LinuxCPUSensor {
+    /// Creates a RAPL sensor, failing if the sysfs endpoint is not readable.
     pub fn new() -> Result<Self, SensorError> {
         let rapl_path = "/sys/class/powercap/intel-rapl:0".to_string();
         let energy_path = format!("{}/energy_uj", rapl_path);
@@ -22,6 +23,7 @@ impl LinuxCPUSensor {
         })
     }
 
+    /// Reads the cumulative energy counter in microjoules.
     fn read_energy_uj(&self) -> Result<f64, SensorError> {
         let path = format!("{}/energy_uj", self.rapl_path);
         std::fs::read_to_string(&path)

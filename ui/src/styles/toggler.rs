@@ -10,6 +10,7 @@ use super::{
 use crate::themes::AppTheme;
 
 #[derive(Default)]
+/// Toggle switch appearance variants.
 pub enum TogglerStyle {
     #[default]
     Standard,

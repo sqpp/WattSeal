@@ -16,20 +16,24 @@ use crate::{
     types::AppLanguage,
 };
 
+/// Navigation bar with page tabs and settings button.
 pub struct Header {
     nav_pages: Vec<Page>,
     active_page: Page,
 }
 
 impl Header {
+    /// Creates a header with the given pages and initial active page.
     pub fn new(nav_pages: Vec<Page>, active_page: Page) -> Self {
         Self { nav_pages, active_page }
     }
 
+    /// Sets the active navigation tab.
     pub fn change_page(&mut self, new_page: Page) {
         self.active_page = new_page;
     }
 
+    /// Renders the header bar.
     pub fn view(&self, language: AppLanguage) -> Element<'_, Message, AppTheme> {
         let title = Container::new(
             Text::new(self.active_page.translated_name(language))

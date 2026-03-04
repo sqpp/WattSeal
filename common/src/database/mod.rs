@@ -36,11 +36,13 @@ pub fn generic_name_for_table(table_name: &str) -> Option<&'static str> {
     dispatch_entry!(table_name, generic_name())
 }
 
+/// SQLite database handle with tracked table list.
 pub struct Database {
     pub(crate) conn: Connection,
     tables: Option<Vec<String>>,
 }
 
+/// Error types for database operations.
 #[derive(Debug)]
 pub enum DatabaseError {
     TimeError(String),
@@ -70,6 +72,7 @@ impl From<rusqlite::Error> for DatabaseError {
 }
 
 impl Database {
+    /// Opens the database and reads existing table metadata.
     pub fn new() -> Result<Self, DatabaseError> {
         let conn = Connection::open(DATABASE_PATH)?;
         conn.pragma_update(None, "journal_mode", "WAL")?;
@@ -94,6 +97,7 @@ impl Database {
         Ok(Database { conn, tables })
     }
 
+    /// Creates sensor tables that don't already exist.
     pub fn create_tables_if_not_exists(&mut self, table_names: &[&str]) -> Result<(), DatabaseError> {
         let tx = self.conn.transaction()?;
         tx.execute(
@@ -141,6 +145,7 @@ impl Database {
         Ok(())
     }
 
+    /// Returns the list of active sensor table names.
     pub fn get_tables(&self) -> Vec<String> {
         self.tables.clone().unwrap_or_default()
     }
@@ -174,6 +179,7 @@ impl Database {
         Ok(())
     }
 
+    /// Inserts a sensor event with all its readings.
     pub fn insert_event(&mut self, event: &Event) -> Result<(), DatabaseError> {
         let tx = self.conn.transaction()?;
         tx.execute(
@@ -214,6 +220,7 @@ impl Database {
         Ok(())
     }
 
+    /// Loads the stored hardware info from the database.
     pub fn get_hardware_info(&self) -> Result<HardwareInfo, DatabaseError> {
         let query = "SELECT hardware_data FROM hardware_info WHERE id = 1";
         let mut stmt = self.conn.prepare(query)?;
@@ -227,6 +234,7 @@ impl Database {
         Ok(result)
     }
 
+    /// Adds energy to a component's cumulative total.
     pub fn update_component_all_time_data(
         &mut self,
         component_name: &str,
@@ -242,6 +250,7 @@ impl Database {
         Ok(())
     }
 
+    /// Loads persisted UI language and carbon intensity settings.
     pub fn load_ui_settings(&self) -> Result<Option<(String, f64)>, DatabaseError> {
         let mut stmt = self
             .conn
@@ -252,6 +261,7 @@ impl Database {
         Ok(result)
     }
 
+    /// Persists UI language and carbon intensity settings.
     pub fn save_ui_settings(&mut self, language: &str, carbon_g_per_kwh: f64) -> Result<(), DatabaseError> {
         self.conn.execute(
             "INSERT INTO ui_settings (id, language, carbon_intensity_g_per_kwh) VALUES (1, ?1, ?2) \
@@ -285,6 +295,7 @@ impl Database {
         Ok(())
     }
 
+    /// Queries sensor data between two timestamps.
     pub fn select_data_in_time_range(
         &mut self,
         table_name: &str,
@@ -298,6 +309,7 @@ impl Database {
         Ok(to_system_time_records(sensor_data_list))
     }
 
+    /// Queries all sensor tables between two timestamps.
     pub fn select_all_data_in_time_range(
         &mut self,
         start_time: SystemTime,
@@ -317,6 +329,7 @@ impl Database {
         Ok(to_system_time_records(records))
     }
 
+    /// Returns windowed averages over the last N seconds.
     pub fn select_last_n_seconds_average(
         &mut self,
         n: i64,
@@ -348,6 +361,7 @@ impl Database {
         Ok(to_system_time_records(sensor_data_list))
     }
 
+    /// Returns the most recent N timestamped records.
     pub fn select_last_n_records(&mut self, n: i64) -> Result<Vec<(SystemTime, SensorData)>, DatabaseError> {
         let mut records = Vec::<(SystemTime, SensorData)>::new();
         let mut stmt = self
@@ -395,6 +409,7 @@ impl Database {
         Ok(records)
     }
 
+    /// Loads cumulative energy totals for all components.
     pub fn get_all_time_data(&mut self) -> Result<AllTimeData, DatabaseError> {
         let mut components = HashMap::new();
         if let Ok(mut stmt) = self
@@ -410,6 +425,7 @@ impl Database {
         Ok(AllTimeData { components })
     }
 
+    /// Dispatches a raw SQL query to the correct typed table reader.
     pub fn execute_sensor_query<P>(
         &self,
         table_name: &str,
@@ -594,6 +610,7 @@ impl Database {
         Ok(filled)
     }
 
+    /// Returns top-N processes averaged over the given time range.
     pub fn select_top_processes_average(
         &self,
         n_seconds: i64,

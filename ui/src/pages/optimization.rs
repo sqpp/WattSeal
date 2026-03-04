@@ -2,6 +2,7 @@ use iced::{Element, widget::Text};
 
 use crate::{message::Message, themes::AppTheme, translations::optimization_content, types::AppLanguage};
 
+/// Optimization tips page (work in progress).
 pub struct OptimizationPage {}
 
 impl OptimizationPage {

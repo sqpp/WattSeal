@@ -4,6 +4,7 @@ use super::colors::ExtendedPalette;
 use crate::themes::AppTheme;
 
 #[derive(Debug, Clone, Copy, Default)]
+/// Text color variants.
 pub enum TextStyle {
     #[default]
     Default,

@@ -6,8 +6,8 @@ use crate::types::{AppLanguage, TimeRange};
 
 pub fn window_title(language: AppLanguage) -> &'static str {
     match language {
-        AppLanguage::English => "Energy Monitor",
-        AppLanguage::French => "Moniteur d'Énergie",
+        AppLanguage::English => "WattSeal",
+        AppLanguage::French => "WattSeal",
     }
 }
 
@@ -636,8 +636,8 @@ pub fn settings_carbon_intensity(language: AppLanguage) -> &'static str {
 
 pub fn setup_welcome_title(language: AppLanguage) -> &'static str {
     match language {
-        AppLanguage::English => "Welcome to Energy Monitor",
-        AppLanguage::French => "Bienvenue sur le Moniteur d'Énergie",
+        AppLanguage::English => "Welcome to WattSeal",
+        AppLanguage::French => "Bienvenue sur WattSeal",
     }
 }
 

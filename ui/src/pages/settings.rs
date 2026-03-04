@@ -22,6 +22,7 @@ use crate::{
     types::{AppLanguage, CarbonIntensity},
 };
 
+/// Settings modal for theme, language, and carbon intensity.
 pub struct SettingsPage {}
 
 impl SettingsPage {

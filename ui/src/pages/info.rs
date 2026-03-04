@@ -25,6 +25,7 @@ use crate::{
 
 const CARD_HEIGHT: f32 = 180.0;
 
+/// Hardware information page listing system components.
 pub struct InfoPage;
 
 impl InfoPage {

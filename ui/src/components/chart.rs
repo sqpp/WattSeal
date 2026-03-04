@@ -49,6 +49,7 @@ const TOOLTIP_OFFSET: f32 = 20.0;
 // const TOOLTIP_CORNER_RADIUS: f32 = 4.0;
 const TOOLTIP_LINE_HEIGHT: f32 = 16.0;
 
+/// Plotters color scheme derived from the active theme.
 #[derive(Debug, Clone, Copy)]
 pub struct ChartStyle {
     pub grid_bold: RGBAColor,
@@ -83,6 +84,7 @@ impl From<AppTheme> for ChartStyle {
 }
 
 impl ChartStyle {
+    /// Returns the color for a series by index.
     pub fn series_color(&self, index: usize) -> RGBColor {
         self.series_colors[index % self.series_colors.len()]
     }
@@ -97,6 +99,7 @@ pub enum TooltipSide {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+/// Data displayed in a chart hover tooltip.
 pub struct TooltipContent {
     pub title: String,
     pub value: f32,
@@ -109,6 +112,7 @@ pub struct TooltipContent {
 }
 
 impl TooltipContent {
+    /// Creates tooltip content for a data point.
     pub fn new(
         title: String,
         value: f32,
@@ -130,6 +134,7 @@ impl TooltipContent {
         }
     }
 
+    /// Attaches an optional description line.
     pub fn with_description(mut self, desc: impl Into<String>) -> Self {
         self.description = Some(desc.into());
         self
@@ -148,12 +153,14 @@ impl TooltipContent {
         }
     }
 
+    /// Computes the tooltip height based on content lines.
     pub fn calculate_height(&self) -> f32 {
         let lines = 3 + usize::from(self.description.is_some());
         (TOOLTIP_PADDING * 2.0 + lines as f32 * TOOLTIP_LINE_HEIGHT).max(TOOLTIP_MIN_HEIGHT)
     }
 }
 
+/// Positioned tooltip with screen coordinates and bounds.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TooltipData {
     pub content: TooltipContent,
@@ -163,6 +170,7 @@ pub struct TooltipData {
     pub bounds: TooltipBounds,
 }
 
+/// Rectangle bounds for tooltip collision and rendering.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct TooltipBounds {
     pub x: f32,
@@ -230,6 +238,7 @@ impl TooltipData {
     }
 }
 
+/// Interactive time-series chart backed by plotters.
 pub struct SensorChart {
     cache: RefCell<Cache>,
     data: ChartData,
@@ -353,6 +362,12 @@ impl SensorChart {
     pub fn set_all_line_types(&mut self, line_type: LineType) {
         for series in self.data.values_mut() {
             series.line_type = line_type;
+        }
+    }
+
+    pub fn set_all_display_labels(&mut self, display_label: &str) {
+        for series in self.data.values_mut() {
+            series.display_label = display_label.to_string();
         }
     }
 

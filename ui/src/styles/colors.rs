@@ -3,6 +3,7 @@ use iced::{Color, theme::Palette};
 use crate::themes::AppTheme;
 
 #[derive(Debug, Clone, Copy)]
+/// Extended palette with derived colors for UI styling.
 pub struct ExtendedPalette {
     // Base colors from iced::Palette
     pub background: Color,

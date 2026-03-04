@@ -18,6 +18,7 @@ use linux_cpu::LinuxCPUSensor;
 #[cfg(target_os = "windows")]
 use windows_cpu::WindowsCPUSensor;
 
+/// Platform-specific CPU power source.
 pub enum CPUOS {
     #[cfg(target_os = "windows")]
     Windows(WindowsCPUSensor),
@@ -26,6 +27,7 @@ pub enum CPUOS {
     Estimation(EstimationCPUSensor),
 }
 
+/// Cross-platform CPU sensor combining power reading with usage.
 pub struct CPUSensor {
     sensor: CPUOS,
     system: Rc<RefCell<System>>,
@@ -109,6 +111,7 @@ impl Sensor for CPUSensor {
     }
 }
 
+/// CPU vendor identifier.
 #[derive(Copy, Clone, PartialEq)]
 pub enum CPUVendor {
     Intel,
@@ -117,6 +120,7 @@ pub enum CPUVendor {
 }
 
 impl CPUVendor {
+    /// Detects the vendor from an identifier string.
     pub fn from_str(vendor_str: &str) -> CPUVendor {
         let vendor_lower = vendor_str.to_lowercase();
         if vendor_lower.contains("intel") {
@@ -129,6 +133,7 @@ impl CPUVendor {
     }
 }
 
+/// Returns unique CPU brand names from sysinfo.
 pub fn get_cpu_list(system: Rc<RefCell<System>>) -> Result<Vec<String>, String> {
     let s = system
         .try_borrow_mut()
@@ -141,6 +146,7 @@ pub fn get_cpu_list(system: Rc<RefCell<System>>) -> Result<Vec<String>, String> 
         .collect())
 }
 
+/// Creates the best available CPU power sensor, falling back to TDP estimation.
 pub fn get_cpu_power_sensor(
     system: Rc<RefCell<System>>,
     index: usize,

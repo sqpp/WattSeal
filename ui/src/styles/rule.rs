@@ -3,6 +3,7 @@ use iced::widget::rule::{self, Catalog};
 use super::colors::{ExtendedPalette, with_alpha};
 use crate::themes::AppTheme;
 
+/// Horizontal/vertical rule appearance variants.
 pub enum RuleStyle<'a> {
     Standard,
     Subtle,

@@ -18,6 +18,7 @@ use crate::{
     types::AppLanguage,
 };
 
+/// Creates a styled text element with optional bold font.
 pub fn text_widget<'a>(
     text: impl text::IntoFragment<'a>,
     size: f32,
@@ -32,6 +33,7 @@ pub fn text_widget<'a>(
     text.into()
 }
 
+/// Returns a muted placeholder for empty data sections.
 pub fn no_data_placeholder<'a>(language: AppLanguage) -> Element<'a, Message, AppTheme> {
     Text::new(no_data_available(language))
         .size(FONT_SIZE_BODY)
@@ -39,6 +41,7 @@ pub fn no_data_placeholder<'a>(language: AppLanguage) -> Element<'a, Message, Ap
         .into()
 }
 
+/// Wraps content in a modal overlay with click-outside dismiss.
 pub fn modal<'a>(
     background: Element<'a, Message, AppTheme>,
     content: Element<'a, Message, AppTheme>,

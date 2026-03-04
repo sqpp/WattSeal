@@ -18,7 +18,8 @@ use winit::{
     window::WindowId,
 };
 
-fn spawn_ui(ui_child: &Mutex<Option<Child>>) -> Result<(), String> {
+/// Spawns the UI subprocess if not already running.
+fn spawn_ui(ui_child: &Arc<Mutex<Option<Child>>>) -> Result<(), String> {
     let mut guard = ui_child
         .lock()
         .map_err(|e| format!("Failed to lock UI child mutex: {}", e))?;
@@ -88,7 +89,7 @@ fn main() {
             &PredefinedMenuItem::about(
                 None,
                 Some(AboutMetadata {
-                    name: Some("WattAware".to_string()),
+                    name: Some("WattSeal".to_string()),
                     copyright: Some("Copyright 2026".to_string()),
                     ..Default::default()
                 }),
@@ -126,7 +127,7 @@ fn main() {
     let _tray_icon = icon.and_then(|icon| {
         TrayIconBuilder::new()
             .with_menu(Box::new(tray_menu))
-            .with_tooltip("WattAware")
+            .with_tooltip("WattSeal")
             .with_icon(icon)
             .build()
             .ok()
@@ -135,6 +136,7 @@ fn main() {
     spawn_ui(&ui_child).ok();
 
     // Run the event loop (pumps Windows messages for tray icon)
+    /// Minimal event-loop handler for the system tray icon.
     struct TrayApp;
     impl ApplicationHandler for TrayApp {
         fn resumed(&mut self, event_loop: &ActiveEventLoop) {

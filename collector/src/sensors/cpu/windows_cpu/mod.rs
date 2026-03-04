@@ -46,12 +46,14 @@ impl Default for EnergyMeasurement {
     }
 }
 
+/// Windows CPU power sensor using MSR (Model-Specific Registers) via WinRing0.
 pub struct WindowsCPUSensor {
     msr_reader: MSRReader,
     last_energy_measurement: RefCell<EnergyMeasurement>,
 }
 
 impl WindowsCPUSensor {
+    /// Initializes the WinRing0 driver and MSR reader for the given CPU vendor.
     pub fn new(vendor_id: &str) -> Result<Self, SensorError> {
         let vendor = CPUVendor::from_str(vendor_id);
         let ring0_reader =
@@ -64,6 +66,7 @@ impl WindowsCPUSensor {
         })
     }
 
+    /// Reads raw energy counters and computes power delta since last call.
     fn read_raw_power(&self) -> Result<CPUValues, SensorError> {
         let current_energy = self.msr_reader.read_energy()?;
         let power_values = {

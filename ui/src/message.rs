@@ -7,6 +7,7 @@ use crate::{
     types::{AppLanguage, CarbonIntensity, TimeRange},
 };
 
+/// UI event variants dispatched by user actions and background tasks.
 #[derive(Debug, Clone)]
 pub enum Message {
     Tick,

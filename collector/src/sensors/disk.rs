@@ -16,11 +16,13 @@ const SSD_W_PER_MB_S: f64 = 0.015;
 const HDD_W_PER_MB_S: f64 = 0.035;
 const UNKNOWN_W_PER_MB_S: f64 = 0.02;
 
+/// Disk I/O sensor that estimates power from throughput.
 pub struct DiskSensor {
     disks: RefCell<Disks>,
 }
 
 impl DiskSensor {
+    /// Creates a sensor with a refreshed list of disks.
     pub fn new() -> Self {
         Self {
             disks: RefCell::new(Disks::new_with_refreshed_list()),
@@ -107,6 +109,7 @@ impl Sensor for DiskSensor {
     }
 }
 
+/// Returns a string label for the disk type.
 fn disk_kind_label(kind: &sysinfo::Disk) -> &'static str {
     if kind.is_removable() {
         "Removable"

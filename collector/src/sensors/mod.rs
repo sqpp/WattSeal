@@ -21,6 +21,7 @@ pub use process::get_processes;
 pub use ram::RamSensor;
 use sysinfo::System;
 
+/// Variant wrapper for all supported sensor types.
 pub enum SensorType {
     CPU(CPUSensor),
     GPU(GPUSensor),
@@ -69,8 +70,11 @@ impl Sensor for SensorType {
     }
 }
 
+/// Common interface for hardware sensors.
 pub trait Sensor {
+    /// Reads current power, usage, and throughput data.
     fn read_full_data(&self) -> Result<SensorData, SensorError>;
+    /// Returns static hardware specs (model, capacity, etc.).
     fn read_initial_info(&self) -> Result<InitialInfo, SensorError> {
         Err(SensorError::NotSupported)
     }
@@ -85,6 +89,7 @@ pub enum SensorError {
     ReadError(String),
 }
 
+/// Aggregates readings from all sensors into a single timestamped event.
 pub fn create_event_from_sensors(sensors: &Vec<SensorType>, system: Rc<RefCell<System>>) -> Event {
     let time = SystemTime::now();
     let mut data: Vec<SensorData> = Vec::new();
@@ -196,6 +201,7 @@ pub fn create_event_from_sensors(sensors: &Vec<SensorType>, system: Rc<RefCell<S
     return Event::new(time, data);
 }
 
+/// Collects hardware info (names + initial specs) from all sensors.
 pub fn get_hardware_info(sensors: &Vec<SensorType>) -> GeneralData {
     let mut tables: Vec<String> = Vec::new();
     let mut detected_materials: Vec<String> = Vec::new();

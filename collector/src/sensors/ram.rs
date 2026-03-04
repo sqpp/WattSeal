@@ -7,11 +7,13 @@ use crate::{
     sensors::{Sensor, SensorError, System},
 };
 
+/// RAM usage sensor backed by sysinfo.
 pub struct RamSensor {
     system: Rc<RefCell<System>>,
 }
 
 impl RamSensor {
+    /// Creates a sensor sharing the given `System` handle.
     pub fn new(system: Rc<RefCell<System>>) -> Self {
         Self { system }
     }

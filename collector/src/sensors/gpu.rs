@@ -5,6 +5,7 @@ use common::types::InitialInfo;
 use super::{Sensor, SensorError, SensorType};
 use crate::database::SensorData;
 
+/// GPU hardware vendor identifier.
 #[derive(Copy, Clone, PartialEq)]
 pub enum GPUVendor {
     Nvidia,
@@ -14,6 +15,7 @@ pub enum GPUVendor {
 }
 
 impl GPUVendor {
+    /// Detects the vendor from a name string (e.g. "NVIDIA GeForce RTX 3070").
     pub fn from_str(vendor_str: &str) -> GPUVendor {
         let vendor_lower = vendor_str.to_lowercase();
         if vendor_lower.contains("nvidia") {
@@ -28,6 +30,7 @@ impl GPUVendor {
     }
 }
 
+/// Returns the list of GPU adapter names detected on this system.
 #[cfg(target_os = "windows")]
 pub fn get_gpu_list() -> Vec<String> {
     use windows::Win32::Graphics::Dxgi::*;
@@ -65,6 +68,7 @@ pub fn get_gpu_list() -> Vec<String> {
     list
 }
 
+/// Returns the list of NVIDIA GPU names via NVML.
 #[cfg(target_os = "linux")]
 pub fn get_gpu_list() -> Vec<String> {
     nvml_wrapper::Nvml::init()
@@ -83,6 +87,7 @@ pub fn get_gpu_list() -> Vec<String> {
     Vec::new()
 }
 
+/// Platform-specific GPU power sensor.
 pub enum GPUSensor {
     #[cfg(any(target_os = "windows", target_os = "linux"))]
     Nvidia(nvidia_gpu::NvidiaGPUSensor),
@@ -115,6 +120,7 @@ impl Sensor for GPUSensor {
     }
 }
 
+/// Creates a GPU power sensor appropriate for the given vendor.
 pub fn get_gpu_power_sensor(vendor_id: &str, index: u32) -> Result<SensorType, SensorError> {
     let vendor = GPUVendor::from_str(vendor_id);
 
@@ -145,6 +151,7 @@ pub fn get_gpu_power_sensor(vendor_id: &str, index: u32) -> Result<SensorType, S
 }
 
 impl GPUSensor {
+    /// Returns per-process GPU utilization percentages.
     pub fn get_process_gpu_usage(&self, current_timestamp: u64) -> Result<HashMap<u32, f64>, SensorError> {
         match self {
             #[cfg(any(target_os = "windows", target_os = "linux"))]

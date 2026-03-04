@@ -9,6 +9,7 @@ use crate::themes::AppTheme;
 const SCROLLBAR_RADIUS: f32 = 4.0;
 
 #[derive(Default)]
+/// Scrollable appearance variants.
 pub enum ScrollableStyle {
     #[default]
     Standard,

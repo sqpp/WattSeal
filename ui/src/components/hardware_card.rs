@@ -18,6 +18,7 @@ use crate::{
     themes::AppTheme,
 };
 
+/// Configuration for a hardware information card.
 pub struct InfoCard {
     pub icon_svg: &'static [u8],
     pub accent: Color,
@@ -29,6 +30,7 @@ pub struct InfoCard {
 }
 
 impl InfoCard {
+    /// Creates a card with icon, title, subtitle, and data fields.
     pub fn new(
         icon_svg: &'static [u8],
         accent: Color,
@@ -50,12 +52,14 @@ impl InfoCard {
     }
 }
 
+/// Label-value pair displayed in a hardware card.
 pub struct InfoField {
     pub label: String,
     pub value: String,
 }
 
 impl InfoField {
+    /// Creates a field with the given label and value.
     pub fn new(label: impl Into<String>, value: impl Into<String>) -> Self {
         Self {
             label: label.into(),
@@ -64,6 +68,7 @@ impl InfoField {
     }
 }
 
+/// Renders a hardware information card element.
 pub fn hardware_card<'a>(
     icon_svg: &'static [u8],
     accent: Color,

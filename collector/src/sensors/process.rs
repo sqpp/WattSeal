@@ -4,6 +4,7 @@ use sysinfo::{Pid, Process, System};
 
 use crate::sensors::ProcessData;
 
+/// Collects the top-N processes ranked by estimated power consumption.
 pub fn get_processes(
     system: Rc<RefCell<System>>,
     cpu_power: f64,
@@ -55,6 +56,7 @@ pub fn get_processes(
     return top_apps;
 }
 
+/// Groups OS processes by app name and estimates per-app power.
 fn extract_and_group_processes(
     processes: &HashMap<Pid, Process>,
     total_memory: u64,

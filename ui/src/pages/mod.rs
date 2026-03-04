@@ -31,6 +31,7 @@ macro_rules! define_pages {
 define_pages!(Dashboard, Info, Optimization);
 
 impl Page {
+    /// Returns the translated page name for the given language.
     pub fn translated_name(&self, language: crate::types::AppLanguage) -> &'static str {
         match self {
             Page::Dashboard => page_dashboard(language),

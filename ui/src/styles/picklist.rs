@@ -13,6 +13,7 @@ use crate::themes::AppTheme;
 const PICKLIST_BORDER_RADIUS: f32 = 8.0;
 
 #[derive(Default, Clone, Copy, PartialEq, Eq)]
+/// Pick list appearance variants.
 pub enum PickListStyle {
     #[default]
     Standard,

@@ -10,6 +10,7 @@ use super::{
 use crate::themes::AppTheme;
 
 #[derive(Default, Clone, Copy)]
+/// Text input appearance variants.
 pub enum TextInputStyle {
     #[default]
     Standard,

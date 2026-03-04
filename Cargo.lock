@@ -3900,20 +3900,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "power-monitor"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "collector",
- "common",
- "is-admin",
- "runas",
- "tray-icon",
- "ui",
- "winit",
-]
-
-[[package]]
 name = "ppv-lite86"
 version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5479,6 +5465,20 @@ dependencies = [
  "pin-utils",
  "slab",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "wattseal"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "collector",
+ "common",
+ "is-admin",
+ "runas",
+ "tray-icon",
+ "ui",
+ "winit",
 ]
 
 [[package]]

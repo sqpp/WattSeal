@@ -47,6 +47,7 @@ fn pe_file_description(path: &Path) -> Option<String> {
     vi.value(lang, "FileDescription")
 }
 
+/// Converts a byte count to megabytes.
 pub fn bytes_to_mb(bytes: f64) -> f64 {
     bytes / (2 << 20) as f64
 }

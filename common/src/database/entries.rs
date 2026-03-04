@@ -7,6 +7,7 @@ use crate::{
     utils::load_icon_and_name,
 };
 
+/// Maps a data type to its SQLite table schema and row conversion.
 pub trait DatabaseEntry {
     fn generic_name() -> &'static str;
     fn table_name_static() -> &'static str;
