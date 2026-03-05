@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+
+<svg
+   width="800px"
+   height="800px"
+   viewBox="0 0 512 512"
+   version="1.1"
+   id="svg2"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <defs
+     id="defs2" />
+  <title
+     id="title1">ionicons-v5-d</title>
+  <path
+     id="path2"
+     style="opacity:1;fill:#000000;fill-opacity:1;stroke:none;baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;stroke-linecap:square;stroke-miterlimit:10;enable-background:accumulate;stop-color:#000000;stop-opacity:1"
+     d="M 77.69875 128 C 43.793705 128 16 155.7937 16 189.69875 L 16 322.30125 C 16 356.2063 43.793705 384 77.69875 384 L 386.30125 384 C 420.2063 384 448 356.2063 448 322.30125 L 448 189.69875 C 448 155.7937 420.2063 128 386.30125 128 L 77.69875 128 z M 77.69875 160 L 386.30125 160 C 403.03181 160 416 172.96819 416 189.69875 L 416 322.30125 C 416 339.03181 403.03181 352 386.30125 352 L 77.69875 352 C 60.968194 352 48 339.03181 48 322.30125 L 48 189.69875 C 48 172.96819 60.968194 160 77.69875 160 z M 89.69 182.93 C 78.886756 182.93 69.69 192.12675 69.69 202.93 L 69.69 309.07 C 69.69 319.87325 78.886756 329.07 89.69 329.07 L 374.32 329.07 C 385.12325 329.07 394.32 319.87325 394.32 309.07 L 394.32 202.93 C 394.32 192.12675 385.12325 182.93 374.32 182.93 L 89.69 182.93 z M 480 202.67 A 16 16 0 0 0 464 218.67 L 464 293.33 A 16 16 0 0 0 480 309.33 A 16 16 0 0 0 496 293.33 L 496 218.67 A 16 16 0 0 0 480 202.67 z " />
+  <metadata
+     id="metadata4">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:title>ionicons-v5-d</dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+</svg>

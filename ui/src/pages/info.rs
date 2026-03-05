@@ -6,7 +6,7 @@ use iced::{
 
 use crate::{
     components::hardware_card::{InfoCard, InfoField, hardware_card},
-    icons,
+    icons::Icon,
     message::Message,
     styles::{
         scrollable::ScrollableStyle,
@@ -39,7 +39,7 @@ impl InfoPage {
         let mut specs: Vec<InfoCard> = Vec::new();
 
         specs.push(InfoCard::new(
-            icons::CPU,
+            Icon::CPU,
             pal.primary,
             cpu(language).to_string(),
             processor_information(language).to_string(),
@@ -53,7 +53,7 @@ impl InfoPage {
 
         if hw.gpus.is_empty() {
             specs.push(InfoCard::new(
-                icons::GPU,
+                Icon::GPU,
                 pal.danger,
                 gpu(language).to_string(),
                 graphics_information(language).to_string(),
@@ -65,7 +65,7 @@ impl InfoPage {
             for (i, gpu) in hw.gpus.iter().enumerate() {
                 let subtitle = graphics_processor_n(language, i + 1);
                 specs.push(InfoCard::new(
-                    icons::GPU,
+                    Icon::GPU,
                     pal.danger,
                     translations::gpu(language).to_string(),
                     subtitle,
@@ -77,7 +77,7 @@ impl InfoPage {
         }
 
         specs.push(InfoCard::new(
-            icons::RAM,
+            Icon::RAM,
             pal.warning,
             memory(language).to_string(),
             ram_information(language).to_string(),
@@ -93,7 +93,7 @@ impl InfoPage {
         ));
 
         specs.push(InfoCard::new(
-            icons::SYSTEM,
+            Icon::System,
             pal.success,
             system(language).to_string(),
             os_information(language).to_string(),
@@ -104,7 +104,7 @@ impl InfoPage {
 
         if hw.disks.is_empty() {
             specs.push(InfoCard::new(
-                icons::STORAGE,
+                Icon::Storage,
                 pal.primary,
                 storage(language).to_string(),
                 disk_information(language).to_string(),
@@ -116,7 +116,7 @@ impl InfoPage {
             for (i, disk) in hw.disks.iter().enumerate() {
                 let subtitle = disk_n(language, i + 1);
                 specs.push(InfoCard::new(
-                    icons::STORAGE,
+                    Icon::Storage,
                     pal.primary,
                     storage(language).to_string(),
                     subtitle,
@@ -146,7 +146,7 @@ impl InfoPage {
             };
 
             specs.push(InfoCard::new(
-                icons::BATTERY,
+                Icon::Battery,
                 pal.warning,
                 battery(language).to_string(),
                 battery_status(language).to_string(),
@@ -156,7 +156,7 @@ impl InfoPage {
             ));
         } else {
             specs.push(InfoCard::new(
-                icons::BATTERY,
+                Icon::Battery,
                 pal.warning,
                 battery(language).to_string(),
                 battery_status(language).to_string(),
@@ -168,7 +168,7 @@ impl InfoPage {
 
         if hw.displays.is_empty() {
             specs.push(InfoCard::new(
-                icons::DISPLAY,
+                Icon::Display,
                 pal.success,
                 display(language).to_string(),
                 screen_information(language).to_string(),
@@ -187,7 +187,7 @@ impl InfoPage {
                     secondary_display(language)
                 };
                 specs.push(InfoCard::new(
-                    icons::DISPLAY,
+                    Icon::Display,
                     pal.success,
                     display(language).to_string(),
                     subtitle.to_string(),
@@ -206,7 +206,7 @@ impl InfoPage {
             .map(|card| {
                 let on_info = card.info_key.map(|key| Message::OpenInfoModal(key));
                 hardware_card(
-                    card.icon_svg,
+                    card.icon,
                     card.accent,
                     &card.title,
                     &card.subtitle,
@@ -233,6 +233,7 @@ impl InfoPage {
                     .height(Length::Fixed(CARD_HEIGHT)),
             );
         }
+        card_rows = card_rows.push(row);
 
         Scrollable::new(
             Container::new(card_rows)

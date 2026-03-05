@@ -13,7 +13,7 @@ use iced::{
 };
 
 use crate::{
-    components::{header::Header, helpers::modal, sensor_state::SensorState},
+    components::{footer::Footer, header::Header, helpers::modal, sensor_state::SensorState},
     message::Message,
     pages::{Page, dashboard::DashboardPage, info::InfoPage, optimization::OptimizationPage, settings::SettingsPage},
     styles::{
@@ -27,10 +27,10 @@ use crate::{
     },
     themes::AppTheme,
     translations::{
-        close_dialog_description, close_dialog_title, close_everything, close_ui_only, custom_carbon_invalid,
+        app_name, close_dialog_description, close_dialog_title, close_everything, close_ui_only, custom_carbon_invalid,
         custom_carbon_placeholder, info_modal_all_time_power, info_modal_current_power, info_modal_description,
         info_modal_title, info_modal_top_consumer, info_modal_top_process, modal_close, na, setup_choose_carbon,
-        setup_choose_language, setup_confirm, setup_welcome_title, window_title,
+        setup_choose_language, setup_confirm, setup_welcome_title,
     },
     types::{AppLanguage, CarbonIntensity, TimeRange},
 };
@@ -53,6 +53,7 @@ pub struct App {
     custom_carbon_input: String,
     show_setup: bool,
     header: Header,
+    footer: Footer,
     theme: AppTheme,
     database: Database,
     all_time_data: AllTimeData,
@@ -104,6 +105,7 @@ impl App {
                 sensors,
                 dashboard_page,
                 header: Header::new(Page::all(), current_page),
+                footer: Footer,
                 info_page: InfoPage::new(),
                 optimization_page: OptimizationPage::new(),
                 settings_page: SettingsPage::new(),
@@ -279,6 +281,10 @@ impl App {
             Message::CloseAll => {
                 std::process::exit(common::EXIT_CODE_SHUTDOWN_ALL);
             }
+            Message::OpenUrl(url) => {
+                open::that(&url).ok();
+                Task::none()
+            }
             _ => Task::none(),
         }
     }
@@ -337,6 +343,7 @@ impl App {
         let content: Element<'_, Message, AppTheme> = Column::new()
             .push(self.header.view(self.language))
             .push(page_content)
+            .push(self.footer.view(self.language))
             .into();
 
         if self.settings_open {
@@ -522,7 +529,7 @@ impl App {
 
     /// Returns the localized window title.
     pub fn title(&self) -> String {
-        window_title(self.language).to_string()
+        app_name(self.language).to_string()
     }
 
     /// Returns the active theme.

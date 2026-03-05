@@ -3,6 +3,13 @@ use iced::{
     font::{Family, Weight},
 };
 
+// Icon font
+/// Raw bytes of the embedded icon font (compiled into the binary).
+pub const ICONS_BYTES: &[u8] = include_bytes!("../../../resources/wattseal-icons.ttf");
+
+/// Font descriptor for the icon font.
+pub const ICONS: Font = Font::with_name("wattseal-icons");
+
 // Font sizes
 pub const FONT_SIZE_SMALL: f32 = 12.0;
 pub const FONT_SIZE_BODY: f32 = 14.0;

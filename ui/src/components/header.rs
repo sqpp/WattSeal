@@ -1,22 +1,24 @@
 use iced::{
     Alignment, Element, Length, Padding,
-    widget::{Container, Row, Text, button},
+    widget::{Container, Row, Space, Text, button},
 };
 
 use crate::{
+    icons::Icon,
     message::Message,
     pages::Page,
     styles::{
         button::ButtonStyle,
         container::ContainerStyle,
-        style_constants::{FONT_BOLD, FONT_SIZE_BODY, FONT_SIZE_HEADER, PADDING_LARGE, PADDING_MEDIUM},
+        style_constants::{
+            FONT_BOLD, FONT_SIZE_BODY, FONT_SIZE_HEADER, FONT_SIZE_HUGE, PADDING_LARGE, PADDING_MEDIUM, SPACING_MEDIUM,
+        },
     },
     themes::AppTheme,
-    translations::settings_title,
     types::AppLanguage,
 };
 
-/// Navigation bar with page tabs and settings button.
+/// Navigation bar with logo placeholder, page title, tabs, and settings button.
 pub struct Header {
     nav_pages: Vec<Page>,
     active_page: Page,
@@ -35,14 +37,27 @@ impl Header {
 
     /// Renders the header bar.
     pub fn view(&self, language: AppLanguage) -> Element<'_, Message, AppTheme> {
+        let logo = Icon::SealGraph
+            .to_text()
+            .size(FONT_SIZE_HUGE)
+            .align_y(Alignment::Center);
+
         let title = Container::new(
             Text::new(self.active_page.translated_name(language))
                 .size(FONT_SIZE_HEADER)
                 .font(FONT_BOLD),
         )
-        .width(Length::Fill);
+        .height(Length::Fixed(FONT_SIZE_HUGE))
+        .align_y(Alignment::Center);
 
-        let settings_button = button(Text::new(settings_title(language)).size(FONT_SIZE_BODY))
+        let left_section = Row::new()
+            .spacing(SPACING_MEDIUM)
+            .align_y(Alignment::Center)
+            .push(logo)
+            .push(title);
+
+        // Use gear icon instead of text for settings
+        let settings_button = button(Icon::Settings.to_text().size(FONT_SIZE_BODY))
             .padding(Padding::from([8.0, 16.0]))
             .class(ButtonStyle::Standard)
             .on_press(Message::OpenSettings);
@@ -67,7 +82,8 @@ impl Header {
             .padding(Padding::from([PADDING_MEDIUM, PADDING_LARGE]))
             .spacing(20)
             .align_y(Alignment::Center)
-            .push(title)
+            .push(left_section)
+            .push(Space::new().width(Length::Fill))
             .push(nav_buttons)
             .push(settings_button);
 

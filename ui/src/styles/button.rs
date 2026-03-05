@@ -18,6 +18,8 @@ pub enum ButtonStyle {
     Nav,
     NavActive,
     InfoHelp,
+    Footer,
+    FooterPrimary,
 }
 
 impl Catalog for AppTheme {
@@ -95,6 +97,30 @@ impl ButtonStyle {
                 ..Default::default()
             },
 
+            Self::Footer => button::Style {
+                background: Some(Background::Color(Color::TRANSPARENT)),
+                text_color: ext.text_muted,
+                border: Border {
+                    color: Color::TRANSPARENT,
+                    width: 0.0,
+                    radius: BORDER_RADIUS_SMALL.into(),
+                },
+                shadow: Shadow::default(),
+                ..Default::default()
+            },
+
+            Self::FooterPrimary => button::Style {
+                background: Some(Background::Color(with_alpha(ext.primary, 0.1))),
+                text_color: ext.primary,
+                border: Border {
+                    color: with_alpha(ext.primary, 0.3),
+                    width: BORDER_WIDTH,
+                    radius: BORDER_RADIUS_SMALL.into(),
+                },
+                shadow: Shadow::default(),
+                ..Default::default()
+            },
+
             Self::InfoHelp => button::Style {
                 background: Some(Background::Color(with_alpha(ext.primary, 0.15))),
                 text_color: ext.primary,
@@ -118,7 +144,7 @@ impl ButtonStyle {
 
         button::Style {
             background: Some(Background::Color(hover_bg)),
-            text_color: if matches!(self, Self::Nav) {
+            text_color: if matches!(self, Self::Nav | Self::Footer) {
                 ext.text
             } else {
                 base.text_color

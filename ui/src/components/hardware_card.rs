@@ -1,9 +1,10 @@
 use iced::{
     Alignment, Color, Element, Length, Padding,
-    widget::{Button, Column, Container, Row, Scrollable, Svg, Text, button, svg},
+    widget::{Button, Column, Container, Row, Scrollable, Text, button},
 };
 
 use crate::{
+    icons::Icon,
     message::Message,
     styles::{
         button::ButtonStyle,
@@ -12,7 +13,6 @@ use crate::{
             FONT_BOLD, FONT_SIZE_BODY, FONT_SIZE_SMALL, FONT_SIZE_SUBTITLE, PADDING_LARGE, SPACING_LARGE,
             SPACING_MEDIUM,
         },
-        svg::SvgStyle,
         text::TextStyle,
     },
     themes::AppTheme,
@@ -20,7 +20,7 @@ use crate::{
 
 /// Configuration for a hardware information card.
 pub struct InfoCard {
-    pub icon_svg: &'static [u8],
+    pub icon: Icon,
     pub accent: Color,
     pub title: String,
     pub subtitle: String,
@@ -32,7 +32,7 @@ pub struct InfoCard {
 impl InfoCard {
     /// Creates a card with icon, title, subtitle, and data fields.
     pub fn new(
-        icon_svg: &'static [u8],
+        icon: Icon,
         accent: Color,
         title: impl Into<String>,
         subtitle: impl Into<String>,
@@ -41,7 +41,7 @@ impl InfoCard {
         info_key: Option<String>,
     ) -> Self {
         Self {
-            icon_svg,
+            icon,
             accent,
             title: title.into(),
             subtitle: subtitle.into(),
@@ -70,7 +70,7 @@ impl InfoField {
 
 /// Renders a hardware information card element.
 pub fn hardware_card<'a>(
-    icon_svg: &'static [u8],
+    icon: Icon,
     accent: Color,
     title: &str,
     subtitle: &str,
@@ -78,12 +78,11 @@ pub fn hardware_card<'a>(
     optional_field: Option<InfoField>,
     on_info: Option<Message>,
 ) -> Element<'a, Message, AppTheme> {
-    let icon = Svg::new(svg::Handle::from_memory(icon_svg))
-        .width(22)
-        .height(22)
-        .class(SvgStyle::Tinted(accent));
+    let icon_text = icon.to_text_colored(accent).size(20);
 
-    let icon_badge = Container::new(icon).padding(8).class(ContainerStyle::IconBadge(accent));
+    let icon_badge = Container::new(icon_text)
+        .padding(Padding::from([4.0, 6.0]))
+        .class(ContainerStyle::IconBadge(accent));
 
     let title_col = Column::new()
         .push(Text::new(title.to_owned()).size(FONT_SIZE_SUBTITLE).font(FONT_BOLD))

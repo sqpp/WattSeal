@@ -16,6 +16,7 @@ pub enum ContainerStyle {
     Transparent,
     Card,
     Header,
+    Footer,
     PowerCard,
     ComponentCard,
     IconBadge(Color),
@@ -57,6 +58,18 @@ impl Catalog for AppTheme {
                     offset: Vector::new(0.0, 1.0),
                     blur_radius: 3.0,
                 },
+                ..Default::default()
+            },
+
+            ContainerStyle::Footer => container::Style {
+                background: Some(Background::Color(ext.card_background)),
+                border: Border {
+                    color: ext.border_subtle,
+                    width: BORDER_WIDTH,
+                    ..Border::default()
+                },
+                text_color: Some(ext.text_muted),
+                shadow: Shadow::default(),
                 ..Default::default()
             },
 

@@ -32,4 +32,5 @@ pub enum Message {
     CloseRequested,
     CloseUIOnly,
     CloseAll,
+    OpenUrl(String),
 }

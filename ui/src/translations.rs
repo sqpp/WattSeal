@@ -4,7 +4,7 @@ use crate::types::{AppLanguage, TimeRange};
 
 // Window title
 
-pub fn window_title(language: AppLanguage) -> &'static str {
+pub fn app_name(language: AppLanguage) -> &'static str {
     match language {
         AppLanguage::English => "WattSeal",
         AppLanguage::French => "WattSeal",

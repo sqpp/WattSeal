@@ -1,4 +1,7 @@
-use iced::widget::text::{self, Catalog};
+use iced::{
+    Color,
+    widget::text::{self, Catalog},
+};
 
 use super::colors::ExtendedPalette;
 use crate::themes::AppTheme;
@@ -13,6 +16,7 @@ pub enum TextStyle {
     Tertiary,
     Muted,
     Subtitle,
+    Colored(Color),
 }
 
 impl Catalog for AppTheme {
@@ -32,6 +36,7 @@ impl Catalog for AppTheme {
             TextStyle::Tertiary => ext.danger,
             TextStyle::Muted => ext.text_muted,
             TextStyle::Subtitle => ext.text_muted,
+            TextStyle::Colored(c) => *c,
         };
 
         text::Style { color: Some(color) }
