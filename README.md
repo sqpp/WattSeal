@@ -60,6 +60,8 @@ WattSeal doesn't need administrative privileges to run, but it does need them fo
 
 The app will launch in the system tray in the taskbar and the dashboard will open in a new window. If you close the dashboard, WattSeal will keep running in the background and you can reopen it by clicking the tray icon.
 
+If the app, or more especifically the WinRing0 kernel driver it uses for CPU measurements, is flagged by Windows Defender, it's your responsibility to allow it to run. The app will run without admin privileges, but CPU power readings will be estimates based on usage rather than direct hardware counters. For more info on the security implications of WinRing0, see the [Security](https://github.com/daminoup88/wattseal/blob/main/SECURITY.md#winring0-kernel-driver-windows) section of the documentation.
+
 </details>
 
 <details>
@@ -82,7 +84,6 @@ The `chmod` command makes the file runnable (only needed once). The `sudo` gives
 Run the app normally, WattSeal will work without admin privileges.
 
 </details>
-
 ---
 
 ## What can WattSeal measure?

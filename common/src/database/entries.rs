@@ -313,7 +313,12 @@ impl DatabaseEntry for ProcessData {
             icon: None,
         };
         let (icon, friendly_name) = if let Some(exe_path) = &proc.process_exe_path {
-            load_icon_and_name(exe_path)
+            let path = std::path::Path::new(exe_path);
+            if path.is_absolute() && path.is_file() {
+                load_icon_and_name(exe_path)
+            } else {
+                (None, None)
+            }
         } else {
             (None, None)
         };

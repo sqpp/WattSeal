@@ -237,6 +237,20 @@ impl CarbonIntensity {
                 g_per_kwh: value,
             })
     }
+
+    /// Resolves a stored string to a preset entry.
+    pub fn from_label(label: &str) -> Self {
+        if let Some(preset) = Self::PRESETS.iter().find(|p| !p.is_custom() && p.label == label) {
+            return *preset;
+        }
+        if let Ok(value) = label.trim().parse::<f64>() {
+            return CarbonIntensity {
+                label: "Custom",
+                g_per_kwh: value,
+            };
+        }
+        *Self::PRESETS.iter().find(|p| p.label == "World average").unwrap()
+    }
 }
 
 impl PartialEq for CarbonIntensity {
@@ -322,6 +336,20 @@ impl ElectricityCost {
                 label: "Custom",
                 usd_per_kwh: value,
             })
+    }
+
+    /// Resolves a stored string to a preset entry.
+    pub fn from_label(label: &str) -> Self {
+        if let Some(preset) = Self::PRESETS.iter().find(|p| !p.is_custom() && p.label == label) {
+            return *preset;
+        }
+        if let Ok(value) = label.trim().parse::<f64>() {
+            return ElectricityCost {
+                label: "Custom",
+                usd_per_kwh: value,
+            };
+        }
+        *Self::PRESETS.iter().find(|p| p.label == "World average").unwrap()
     }
 }
 

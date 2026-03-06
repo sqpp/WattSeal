@@ -31,6 +31,11 @@ macro_rules! dispatch_entry {
     }};
 }
 
+/// Returns `true` if the table name is in the known list of sensor tables.
+pub fn is_valid_table_name(name: &str) -> bool {
+    dispatch_entry!(name, table_name_static()).is_some()
+}
+
 /// Returns the display name for a given table name (e.g. "cpu_data" -> "CPU").
 pub fn generic_name_for_table(table_name: &str) -> Option<&'static str> {
     dispatch_entry!(table_name, generic_name())
@@ -46,8 +51,8 @@ pub struct Database {
 #[derive(Debug, Clone)]
 pub struct UiSettings {
     pub language: String,
-    pub carbon_g_per_kwh: f64,
-    pub kwh_cost_eur: f64,
+    pub carbon_intensity: String,
+    pub kwh_cost: String,
     pub theme: String,
 }
 
@@ -90,18 +95,24 @@ impl Database {
 
         conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS ui_settings (
-                id                         INTEGER PRIMARY KEY CHECK (id = 1),
-                language                   TEXT NOT NULL DEFAULT 'EN',
-                carbon_intensity_g_per_kwh REAL NOT NULL DEFAULT 475.0,
-                kwh_cost_eur               REAL NOT NULL DEFAULT 0.20,
-                theme                      TEXT NOT NULL DEFAULT 'Hunting'
+                id               INTEGER PRIMARY KEY CHECK (id = 1),
+                language         TEXT NOT NULL DEFAULT 'EN',
+                carbon_intensity TEXT NOT NULL DEFAULT 'World average',
+                kwh_cost         TEXT NOT NULL DEFAULT 'World average',
+                theme            TEXT NOT NULL DEFAULT 'Hunting'
             )",
         )?;
 
         let tables = match conn.prepare("SELECT tables FROM hardware_info ORDER BY id DESC LIMIT 1") {
             Err(_) => None,
             Ok(mut stmt) => match stmt.query_row([], |row| row.get::<_, String>(0)).optional() {
-                Ok(Some(materials)) => Some(materials.split(',').map(|s| s.trim().to_string()).collect()),
+                Ok(Some(materials)) => Some(
+                    materials
+                        .split(',')
+                        .map(|s| s.trim().to_string())
+                        .filter(|name| is_valid_table_name(name))
+                        .collect(),
+                ),
                 _ => None,
             },
         };
@@ -274,15 +285,15 @@ impl Database {
     /// Loads all persisted UI settings.
     pub fn load_ui_settings(&self) -> Result<Option<UiSettings>, DatabaseError> {
         let mut stmt = self.conn.prepare(
-            "SELECT language, carbon_intensity_g_per_kwh, kwh_cost_eur, theme \
+            "SELECT language, carbon_intensity, kwh_cost, theme \
              FROM ui_settings WHERE id = 1",
         )?;
         let result = stmt
             .query_row([], |row| {
                 Ok(UiSettings {
                     language: row.get(0)?,
-                    carbon_g_per_kwh: row.get(1)?,
-                    kwh_cost_eur: row.get(2)?,
+                    carbon_intensity: row.get(1)?,
+                    kwh_cost: row.get(2)?,
                     theme: row.get(3)?,
                 })
             })
@@ -293,14 +304,14 @@ impl Database {
     /// Persists all UI settings.
     pub fn save_ui_settings(&mut self, settings: &UiSettings) -> Result<(), DatabaseError> {
         self.conn.execute(
-            "INSERT INTO ui_settings (id, language, carbon_intensity_g_per_kwh, kwh_cost_eur, theme) \
+            "INSERT INTO ui_settings (id, language, carbon_intensity, kwh_cost, theme) \
              VALUES (1, ?1, ?2, ?3, ?4) \
              ON CONFLICT(id) DO UPDATE SET \
-               language = ?1, carbon_intensity_g_per_kwh = ?2, kwh_cost_eur = ?3, theme = ?4",
+               language = ?1, carbon_intensity = ?2, kwh_cost = ?3, theme = ?4",
             params![
                 settings.language,
-                settings.carbon_g_per_kwh,
-                settings.kwh_cost_eur,
+                settings.carbon_intensity,
+                settings.kwh_cost,
                 settings.theme
             ],
         )?;
@@ -430,6 +441,9 @@ impl Database {
                 if table_name == ProcessData::table_name_static() {
                     continue;
                 }
+                if !is_valid_table_name(table_name) {
+                    continue;
+                }
                 let query = format!(
                     "SELECT timestamp_id, * FROM {} WHERE timestamp_id IN ({})",
                     table_name, id_list
@@ -513,6 +527,12 @@ impl Database {
         start_time_millis: i64,
         end_time_millis: i64,
     ) -> Result<Vec<(i64, SensorData)>, DatabaseError> {
+        if !is_valid_table_name(table_name) {
+            return Err(DatabaseError::QueryError(format!(
+                "Rejected table name: {}",
+                table_name
+            )));
+        }
         let query = format!(
             "SELECT t.timestamp, d.* FROM timestamp t JOIN {} d ON t.id = d.timestamp_id \
              WHERE t.timestamp >= ?1 AND t.timestamp <= ?2 ORDER BY t.timestamp ASC",
@@ -529,6 +549,12 @@ impl Database {
         end_exclusive: i64,
         window_seconds: i64,
     ) -> Result<Vec<(i64, SensorData)>, DatabaseError> {
+        if !is_valid_table_name(table_name) {
+            return Err(DatabaseError::QueryError(format!(
+                "Rejected table name: {}",
+                table_name
+            )));
+        }
         let avg_cols = get_windowed_average_columns(table_name, "d.", window_seconds)?;
         let query = format!(
             "SELECT

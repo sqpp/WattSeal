@@ -72,9 +72,9 @@ impl App {
         let (language, carbon_intensity, theme, electricity_cost, show_setup) = match database.load_ui_settings() {
             Ok(Some(s)) => {
                 let lang = AppLanguage::from_code(&s.language);
-                let ci = CarbonIntensity::from_g_per_kwh(s.carbon_g_per_kwh);
+                let ci = CarbonIntensity::from_label(&s.carbon_intensity);
                 let theme = AppTheme::from_name(&s.theme);
-                let ec = ElectricityCost::from_usd_per_kwh(s.kwh_cost_eur);
+                let ec = ElectricityCost::from_label(&s.kwh_cost);
                 (lang, ci, theme, ec, false)
             }
             _ => (
@@ -336,7 +336,9 @@ impl App {
                 std::process::exit(common::EXIT_CODE_SHUTDOWN_ALL);
             }
             Message::OpenUrl(url) => {
-                open::that(&url).ok();
+                if url.starts_with("https://") || url.starts_with("http://") {
+                    open::that(&url).ok();
+                }
                 Task::none()
             }
             _ => Task::none(),
@@ -655,10 +657,20 @@ impl App {
     }
 
     fn persist_ui_settings(&mut self) {
+        let carbon_str = if self.carbon_intensity.is_custom() {
+            format!("{}", self.carbon_intensity.g_per_kwh)
+        } else {
+            self.carbon_intensity.label.to_string()
+        };
+        let kwh_str = if self.electricity_cost.is_custom() {
+            format!("{}", self.electricity_cost.usd_per_kwh)
+        } else {
+            self.electricity_cost.label.to_string()
+        };
         let settings = UiSettings {
             language: self.language.code().to_string(),
-            carbon_g_per_kwh: self.carbon_intensity.g_per_kwh,
-            kwh_cost_eur: self.electricity_cost.usd_per_kwh,
+            carbon_intensity: carbon_str,
+            kwh_cost: kwh_str,
             theme: self.theme.name().to_string(),
         };
         let _ = self.database.save_ui_settings(&settings);

@@ -41,7 +41,9 @@ impl WinRing0Reader {
     fn free_stuck_driver(_: Box<dyn Any + Send>) -> Result<Self, String> {
         println!("WinRing0 initialization panicked. Freeing stuck driver...");
         // sc stop WinRing0_1_2_0
-        Command::new("sc").args(["stop", "WinRing0_1_2_0"]).output().ok();
+        let system_root = std::env::var("SystemRoot").unwrap_or_else(|_| r"C:\Windows".to_string());
+        let sc_path = format!(r"{}\System32\sc.exe", system_root);
+        Command::new(&sc_path).args(["stop", "WinRing0_1_2_0"]).output().ok();
         println!("Stuck WinRing0 driver stopped successfully.");
         let mut handler = panic::catch_unwind(|| WinRing0Reader { ring0: WinRing0::new() })
             .map_err(|e| format!("Failed to create WinRing0Reader after freeing driver: {:?}", e))?;
