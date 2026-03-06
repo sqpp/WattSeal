@@ -20,7 +20,14 @@ pub fn load_icon_and_name(path: &str) -> (Option<IconData>, Option<String>) {
     let icon = load_icon(path);
 
     #[cfg(windows)]
-    let name = pe_file_description(Path::new(path));
+    let name = {
+        let fd = pe_file_description(Path::new(path));
+        if let Some(fd) = fd {
+            if fd == "" { None } else { Some(fd) }
+        } else {
+            None
+        }
+    };
     #[cfg(not(windows))]
     let name: Option<String> = None;
 

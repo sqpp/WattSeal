@@ -21,17 +21,32 @@ use winit::{
 
 /// Spawns the UI subprocess if not already running.
 fn spawn_ui(ui_child: &Arc<Mutex<Option<Child>>>) -> Result<(), String> {
-    let mut guard = ui_child
-        .lock()
-        .map_err(|e| format!("Failed to lock UI child mutex: {}", e))?;
+    let mut guard = ui_child.lock().map_err(|e| {
+        let msg = format!("Failed to lock UI child mutex: {}", e);
+        common::clog!("✗ {msg}");
+        msg
+    })?;
     let already_running = guard.as_mut().is_some_and(|c| matches!(c.try_wait(), Ok(None)));
     if already_running {
         return Ok(());
     }
     if let Ok(exe) = std::env::current_exe() {
-        *guard = Command::new(exe).arg("--ui").spawn().ok();
+        match Command::new(exe).arg("--ui").spawn() {
+            Ok(child) => {
+                *guard = Some(child);
+                Ok(())
+            }
+            Err(e) => {
+                let msg = format!("Failed to spawn UI process: {}", e);
+                common::clog!("✗ Failed to spawn UI process: {}", e);
+                Err(msg)
+            }
+        }
+    } else {
+        let msg = "Failed to determine current executable path".to_string();
+        common::clog!("✗ {msg}");
+        Err(msg)
     }
-    Ok(())
 }
 
 fn main() {
@@ -57,7 +72,7 @@ fn main() {
     let _singleton = match common::SingletonGuard::acquire() {
         Ok(guard) => guard,
         Err(msg) => {
-            eprintln!("{msg}");
+            common::clog!("✗ {msg}");
             return;
         }
     };

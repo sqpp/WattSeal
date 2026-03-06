@@ -8,60 +8,14 @@ use std::{
     time::{Duration, Instant, SystemTime},
 };
 
-use common::database::purge::averaging_and_purging_data;
+#[cfg(not(debug_assertions))]
+use common::logging::start_log_session;
+use common::{clog, database::purge::averaging_and_purging_data};
 use database::Database;
 use sensors::{SensorType, create_event_from_sensors, get_hardware_info, gpu::get_gpu_list};
 use sysinfo::System;
 
 use crate::sensors::{DiskSensor, NetworkSensor, RamSensor};
-
-/// In debug → `println!`.  In release → append timestamped line to log file.
-macro_rules! clog {
-    ($($arg:tt)*) => {{
-        #[cfg(debug_assertions)]
-        println!($($arg)*);
-        #[cfg(not(debug_assertions))]
-        log_to_file(&format!($($arg)*));
-    }};
-}
-
-#[cfg(not(debug_assertions))]
-const LOG_FILE: &str = "collector.log";
-
-/// Written once at the start of every init session.
-#[cfg(not(debug_assertions))]
-const SESSION_MARKER: &str = ">>> session start <<<";
-
-/// Append a timestamped line to the log file.
-#[cfg(not(debug_assertions))]
-fn log_to_file(msg: &str) {
-    use std::{fs::OpenOptions, io::Write};
-    let Ok(mut f) = OpenOptions::new().create(true).append(true).open(LOG_FILE) else {
-        return;
-    };
-    let ts = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
-    let _ = writeln!(f, "[{ts}] {msg}");
-}
-
-/// Trim `collector.log` so that only the last 2 sessions remain, then append the session marker.
-#[cfg(not(debug_assertions))]
-fn start_log_session() {
-    use std::io::BufRead;
-    if let Ok(f) = std::fs::File::open(LOG_FILE) {
-        let lines: Vec<String> = std::io::BufReader::new(f).lines().flatten().collect();
-        let starts: Vec<usize> = lines
-            .iter()
-            .enumerate()
-            .filter(|(_, l)| l.contains(SESSION_MARKER))
-            .map(|(i, _)| i)
-            .collect();
-        if starts.len() >= 2 {
-            let keep_from = starts[starts.len() - 2];
-            let _ = std::fs::write(LOG_FILE, lines[keep_from..].join("\n") + "\n");
-        }
-    }
-    log_to_file(SESSION_MARKER);
-}
 
 /// Background sensor-collection application.
 pub struct CollectorApp {

@@ -1137,14 +1137,14 @@ pub fn close_dialog_title(language: AppLanguage) -> &'static str {
 
 pub fn close_dialog_description(language: AppLanguage) -> &'static str {
     match language {
-        AppLanguage::English => "Do you want to close only the UI, or also stop the background collector?",
+        AppLanguage::English => "Do you want to close only the window, or also stop the background collector?",
         AppLanguage::French => "Voulez-vous fermer uniquement l'interface, ou aussi arrêter le collecteur ?",
     }
 }
 
 pub fn close_ui_only(language: AppLanguage) -> &'static str {
     match language {
-        AppLanguage::English => "Close UI only",
+        AppLanguage::English => "Close window only",
         AppLanguage::French => "Fermer l'interface",
     }
 }
