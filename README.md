@@ -11,7 +11,7 @@ WattSeal watches every component inside your machine (CPU, GPU, memory, disks, n
 [![Windows](https://img.shields.io/badge/Windows-x86__64-0078D4?style=flat-square&logo=windows)](https://github.com/daminoup88/wattseal/releases)
 [![Linux](https://img.shields.io/badge/Linux-x86__64-FCC624?style=flat-square&logo=linux&logoColor=black)](https://github.com/daminoup88/wattseal/releases)
 [![macOS](https://img.shields.io/badge/macOS-aarch64-000000?style=flat-square&logo=apple)](https://github.com/daminoup88/wattseal/releases)
-
+[![GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square)](LICENSE)
 
 </div>
 
@@ -84,6 +84,7 @@ The `chmod` command makes the file runnable (only needed once). The `sudo` gives
 Run the app normally, WattSeal will work without admin privileges.
 
 </details>
+
 ---
 
 ## What can WattSeal measure?
@@ -144,6 +145,8 @@ With admin privileges, WattSeal provides the most comprehensive power monitoring
 </div>
 
 The rest of this README is aimed at contributors and developers who want to build WattSeal from source, understand its architecture, or add new features.
+
+> Want to contribute? Check out our [CONTRIBUTING.md](CONTRIBUTING.md) and our [ROADMAP.md](ROADMAP.md) for planned features and areas where help is needed.
 
 ---
 
@@ -235,3 +238,9 @@ cargo +nightly fmt
 ```
 
 > The `.vscode/settings.json` is configured to format on save, so if you're using VS Code your code will be formatted automatically when you save a file.
+
+---
+
+# License
+
+WattSeal is licensed under [GPL-3.0](LICENSE). See the [LICENSE](LICENSE) file for details.

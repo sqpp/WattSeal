@@ -1,18 +1,17 @@
 ## Description
 
-Brief description of what this PR does.
+<!-- Brief description of what this PR does. -->
 
-## Related Issue
+## Related issue
 
 Closes #<!-- issue number -->
 
 ## Changes
 
-- ...
-- ...
+- 
 
 ## Checklist
 
-- [ ] Code compiles without errors (`cargo build`)
-- [ ] Code is formatted (`cargo +nightly fmt`)
-- [ ] Changes are limited to the scope described above
+- [ ] `cargo build` passes
+- [ ] `cargo +nightly fmt` applied
+- [ ] Changes are scoped to the described issue
