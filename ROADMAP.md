@@ -8,7 +8,7 @@
 
 ### Security
 
-- [ ] Remove WinRing0 driver dependency on Windows (see [Security](https://github.com/daminoup88/wattseal/blob/main/SECURITY.md#winring0-kernel-driver-windows) section for details)
+- [ ] Remove WinRing0 driver dependency on Windows (see [Security](SECURITY.md#winring0-kernel-driver-windows) section for details)
 
 ## UI / UX
 

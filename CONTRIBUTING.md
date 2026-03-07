@@ -33,7 +33,7 @@ cd wattseal
 cargo build
 ```
 
-See the [Developer documentation](https://github.com/Daminoup88/WattSeal?tab=readme-ov-file#%EF%B8%8F-developer-documentation) for detailed build instructions and architecture overview.
+See the [Developer documentation](README.md#%EF%B8%8F-developer-documentation) for detailed build instructions and architecture overview.
 
 ## Code Style
 

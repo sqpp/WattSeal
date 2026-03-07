@@ -544,7 +544,7 @@ pub fn metric_type_name(language: AppLanguage, metric: MetricType) -> &'static s
 
 pub fn label_usage(language: AppLanguage) -> &'static str {
     match language {
-        AppLanguage::English | AppLanguage::French => metric_speed(language),
+        AppLanguage::English | AppLanguage::French => metric_usage(language),
     }
 }
 

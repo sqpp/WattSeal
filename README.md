@@ -6,7 +6,7 @@
 
 **See exactly how much power your computer is using, in real time.**
 
-WattSeal watches every component inside your machine (CPU, GPU, memory, disks, network) and shows you a live breakdown of power consumption, which apps are the biggest energy hogs, and how your usage changes over time.
+WattSeal shows you a live breakdown of power consumption of your PC, by component and by app. Monitor which hardware is drawing the most energy, which apps are the biggest energy hogs, and how your usage changes over time.
 
 [![Windows](https://img.shields.io/badge/Windows-x86__64-0078D4?style=flat-square&logo=windows)](https://github.com/daminoup88/wattseal/releases)
 [![Linux](https://img.shields.io/badge/Linux-x86__64-FCC624?style=flat-square&logo=linux&logoColor=black)](https://github.com/daminoup88/wattseal/releases)
@@ -60,7 +60,7 @@ WattSeal doesn't need administrative privileges to run, but it does need them fo
 
 The app will launch in the system tray in the taskbar and the dashboard will open in a new window. If you close the dashboard, WattSeal will keep running in the background and you can reopen it by clicking the tray icon.
 
-If the app, or more especifically the WinRing0 kernel driver it uses for CPU measurements, is flagged by Windows Defender, it's your responsibility to allow it to run. The app will run without admin privileges, but CPU power readings will be estimates based on usage rather than direct hardware counters. For more info on the security implications of WinRing0, see the [Security](https://github.com/daminoup88/wattseal/blob/main/SECURITY.md#winring0-kernel-driver-windows) section of the documentation.
+If the app, or more especifically the WinRing0 kernel driver it uses for CPU measurements, is flagged by Windows Defender, it's your responsibility to allow it to run. The app will run without admin privileges, but CPU power readings will be estimates based on usage rather than direct hardware counters. For more info on the security implications of WinRing0, see the [Security](SECURITY.md#winring0-kernel-driver-windows) section of the documentation.
 
 </details>
 
@@ -139,6 +139,10 @@ With admin privileges, WattSeal provides the most comprehensive power monitoring
 ---
 
 <br>
+
+## Troubleshooting
+
+**Rendering issues?** If the UI looks broken or fails to launch, try setting the environment variable `ICED_BACKEND=tiny-skia` before running the app. This forces Iced to use a software renderer which is more compatible with older GPUs and VMs.
 
 # 🛠️ Developer Documentation
 <div align="center">
