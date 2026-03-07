@@ -1,3 +1,4 @@
+#[cfg(target_os = "windows")]
 const WINDOWS_ICON_PATH: &str = "resources/icon.ico";
 
 fn main() {

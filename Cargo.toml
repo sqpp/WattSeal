@@ -34,7 +34,7 @@ image = { version = "0.25", default-features = false, features = ["png", "ico"] 
 collector = { path = "collector" }
 ui = { path = "ui" }
 common = { path = "common" }
-tray-icon = "0.21.2"
+tray-icon = { version = "0.21.2", default-features = false }
 chrono = "0.4.43"
 winit = "0.30.12"
 image = { version = "0.25", default-features = false, features = ["png"] }
