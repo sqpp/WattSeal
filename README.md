@@ -11,6 +11,8 @@ Available in English and French.
 [![macOS](https://img.shields.io/badge/macOS-aarch64-000000?style=flat-square&logo=apple)](https://github.com/daminoup88/wattseal/releases)
 [![GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square)](LICENSE)
 
+<img src="resources/dashboard.png" alt="WattSeal app dashboard showing real-time power consumption breakdown by application and component" width="80%" style="border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); margin-top: 20px;"/>
+
 </div>
 
 ---
