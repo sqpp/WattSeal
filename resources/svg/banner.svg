@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="1200"
+   height="300"
+   viewBox="0 0 1200 300"
+   version="1.1"
+   id="svg11"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs6">
+    <linearGradient
+       id="bgGrad"
+       x1="0%"
+       y1="0%"
+       x2="100%"
+       y2="100%">
+      <stop
+         offset="0%"
+         style="stop-color:#0d1221;stop-opacity:1"
+         id="stop1" />
+      <stop
+         offset="100%"
+         style="stop-color:#111827;stop-opacity:1"
+         id="stop2" />
+    </linearGradient>
+    <radialGradient
+       id="iconGlow"
+       cx="50%"
+       cy="38%"
+       r="35%">
+      <stop
+         offset="0%"
+         style="stop-color:#00cce6;stop-opacity:0.18"
+         id="stop3" />
+      <stop
+         offset="100%"
+         style="stop-color:#00cce6;stop-opacity:0"
+         id="stop4" />
+    </radialGradient>
+    <linearGradient
+       id="iconLinearGrad"
+       x1="79.16832"
+       y1="13.342791"
+       x2="79.16832"
+       y2="135.86934"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         style="stop-color:#00cce6;stop-opacity:1;"
+         offset="0"
+         id="stop5" />
+      <stop
+         style="stop-color:#0d1221;stop-opacity:1;"
+         offset="1"
+         id="stop6" />
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect
+     width="1200"
+     height="300"
+     rx="12"
+     ry="12"
+     fill="url(#bgGrad)"
+     id="rect6"
+     x="0"
+     y="0"
+     style="display:inline" />
+  <rect
+     width="1200"
+     height="300"
+     rx="12"
+     ry="12"
+     fill="url(#iconGlow)"
+     id="rect7"
+     x="0"
+     y="0"
+     style="display:inline" />
+  <rect
+     width="1200"
+     height="300"
+     rx="12"
+     ry="12"
+     fill="none"
+     stroke="#00cce6"
+     stroke-width="1"
+     stroke-opacity="0.15"
+     id="rect8"
+     x="0"
+     y="0"
+     style="display:inline" />
+  <!-- Icon — centered at x=600, scale 0.9, icon natural bounds ~0,9 to 156,156 -->
+  <g
+     transform="translate(600, 28) scale(0.9) translate(-77.9, -10)"
+     id="g10">
+    <path
+       style="fill:#00cce6;fill-opacity:1;"
+       d="m 10.57905,98.0656 c -2.2601813,11.4761 -0.289935,31.02799 10.044743,37.5372 L 35.437104,135.477 C 29.056558,132.63678 12.592375,120.35744 10.57905,98.0656 Z"
+       id="path8" />
+    <path
+       style="fill:url(#iconLinearGrad);fill-opacity:1;"
+       d="M 146.10429,102.3443 C 118.5236,116.3169 65.560225,82.071417 71.4307,43.774151 c 1.109974,-3.713176 1.227846,-5.386276 16.720745,-16.145877 1.791611,-0.757518 2.880446,-5.563023 3.163931,-9.775586 -0.707979,-1.989867 -2.689488,-3.742384 -4.97044,-3.978696 C 83.149071,13.739534 80.130902,13.366507 76.935037,13.192346 74.68549,10.463484 70.672932,9.8427004 68.234575,9.3306818 67.297623,9.1983608 66.368101,9.1265134 65.446568,9.1097973 l 3.99e-4,-1.398e-4 C 58.996241,8.9926946 52.906969,11.575915 46.929967,15.011876 36.827178,21.975778 30.663402,30.309025 25.978934,39.157556 24.983236,40.884249 17.977043,53.625709 15.681143,61.52892 9.4347747,83.757129 14.119114,101.08853 21.693066,113.33383 H 33.961182 L 48.449766,81.532087 c 0.954127,-1.748882 3.069705,-1.700311 3.817787,0 l 17.250259,41.441293 5.298102,-9.17732 h 10.654701 l 8.786759,-15.218491 c 0.977683,-1.522905 3.194676,-1.410755 4.084016,0 l 10.82145,15.383781 h 19.08163 c 7.83191,-1.33163 12.75171,-6.91936 17.85982,-11.61705 M 61.481441,19.087105 c 0.913895,0.03106 1.767536,0.1955 2.612479,0.386168 0.837304,0.276405 1.73622,0.534856 2.008361,0.97273 -1.734113,4.030184 -3.174855,4.80255 -4.01818,5.179612 -1.022899,0.372777 -2.166256,0.715398 -3.169793,0.595349 -0.92413,-0.138701 -1.686011,-0.151234 -3.326298,-0.84694 -0.637669,-0.316667 -1.137046,-0.742759 -1.788955,-1.003446 -1.105601,-0.41311 -2.007462,-0.726593 -3.04545,-1.037099 1.026564,0.01708 2.12851,0.122545 3.139066,-0.124332 2.025717,-1.198908 2.661179,-3.000065 4.61353,-3.70369 1.086229,-0.346445 2.061336,-0.449457 2.97524,-0.418352 z"
+       id="path9" />
+    <path
+       style="fill:#00cce6;fill-opacity:1;"
+       d="m 146.10429,102.3443 c -4.46941,7.86335 -9.73698,14.07135 -17.41953,16.44999 h -22.91259 l -9.661484,-13.74404 -8.040754,13.92689 H 76.986633 l -5.801283,10.04911 c -1.171816,1.77623 -3.519113,2.00054 -4.582804,0 L 49.905207,89.346125 36.597067,117.85374 H 24.778009 c 5.928013,7.90389 12.821695,13.12956 17.630576,15.60612 0.002,0.002 0.003,0.004 0.004,0.006 2.185907,1.31898 17.0399,8.94122 21.878418,10.22027 7.944362,3.28002 18.005291,4.13965 30.827545,1.47738 -6.803341,-1.76873 -15.68863,-6.20561 -18.236161,-13.32569 34.939623,11.18663 67.138403,-4.39328 69.221903,-29.49352"
+       id="path10" />
+  </g>
+  <!-- WattSeal wordmark -->
+  <text
+     x="600.07275"
+     y="226.03448"
+     text-anchor="middle"
+     font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+     font-weight="700"
+     font-size="64px"
+     letter-spacing="-1"
+     fill="#e6f2ff"
+     id="text10"><tspan
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';display:inline"
+       id="tspan11">WattSeal</tspan></text>
+  <!-- Tagline -->
+  <text
+     x="598.16846"
+     y="270.03448"
+     text-anchor="middle"
+     font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+     font-weight="400"
+     font-size="20px"
+     letter-spacing="1.5"
+     fill="#00cce6"
+     opacity="0.85"
+     id="text11"><tspan
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#00cce6;fill-opacity:1"
+       id="tspan12">Real-time PC power consumption monitoring</tspan></text>
+</svg>

@@ -1,10 +1,6 @@
 <div align="center">
 
-<img src="https://img.shields.io/badge/WattSeal-power%20monitor-00cce6?style=for-the-badge" alt="WattSeal" height="40"/>
-
-# WattSeal
-
-**See exactly how much power your computer is using, in real time.**
+<img src="resources/svg/banner.svg" alt="WattSeal, Real-time PC power consumption monitoring" width="100%"/>
 
 WattSeal shows you a live breakdown of power consumption of your PC, by component and by app. Monitor which hardware is drawing the most energy, which apps are the biggest energy hogs, and how your usage changes over time.
 

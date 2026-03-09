@@ -23,6 +23,7 @@ pub struct CollectorApp {
     sensors: Vec<SensorType>,
     system: Rc<RefCell<System>>,
     last_update: Instant,
+    last_purge: Instant,
     #[cfg(debug_assertions)]
     iteration: u64,
 }
@@ -37,9 +38,19 @@ impl CollectorApp {
             sensors: Vec::new(),
             system: Rc::new(RefCell::new(s)),
             last_update: Instant::now(),
+            last_purge: Instant::now(),
             #[cfg(debug_assertions)]
             iteration: 0,
         })
+    }
+
+    fn purge_and_average(&mut self) {
+        thread::spawn(|| {
+            if let Ok(mut db) = Database::new() {
+                let _ = averaging_and_purging_data(&mut db, 24, 24);
+            }
+        });
+        self.last_purge = Instant::now();
     }
 
     /// Detects hardware sensors, creates database tables, and saves hardware info.
@@ -104,11 +115,7 @@ impl CollectorApp {
     /// Runs the collection loop, sampling sensors every second.
     pub fn run(&mut self) {
         // Purge/averaging runs in a separate thread so collection starts immediately.
-        thread::spawn(|| {
-            if let Ok(mut db) = Database::new() {
-                let _ = averaging_and_purging_data(&mut db, 24, 24);
-            }
-        });
+        self.purge_and_average();
 
         #[cfg(debug_assertions)]
         println!(
@@ -116,6 +123,9 @@ impl CollectorApp {
         );
 
         loop {
+            if self.last_purge.elapsed() > Duration::from_secs(24 * 3600) {
+                self.purge_and_average();
+            }
             let start_time = Instant::now();
             let since_last_update_secs = self.last_update.elapsed().as_secs_f64();
             self.last_update = start_time;
