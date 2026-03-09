@@ -169,23 +169,7 @@ wattseal/               ← Root binary (tray icon, lifecycle management)
 
 **How the pieces fit together:**
 
-```mermaid
-flowchart TD
-  A["wattseal (root)
-    System tray icon
-    spawns collector thread
-    launches UI"]
-  A -->|spawns| B["collector
-                  Polls sensors @1Hz
-                  Estimates power
-                  Writes → SQLite"]
-  A -->|launches| C["ui
-                    Iced GUI, live charts
-                    Per-process view
-                    Reads ← SQLite"]
-  B --> D["power_monitoring.db (WAL)"]
-  C --> D
-```
+![Architecture diagram](resources/svg/overall_architecture.svg)
 
 The collector and UI share the same SQLite database file via WAL (Write-Ahead Logging) mode, which allows concurrent reads and writes without locking.
 
