@@ -21,6 +21,7 @@ pub use types::{
     AllTimeData, CPUData, DiskData, Event, GPUData, GeneralData, HardwareInfo, IconData, LabeledValue, MetricType,
     NetworkData, ProcessData, RamData, SecondaryValues, SensorData, TotalData,
 };
+pub use utils::set_current_dir_to_exe_dir;
 
 /// Exit code the UI subprocess uses to signal "stop the collector too".
 pub const EXIT_CODE_SHUTDOWN_ALL: i32 = 42;

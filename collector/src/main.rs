@@ -1,6 +1,8 @@
 use collector::CollectorApp;
 
 fn main() {
+    let _ = common::set_current_dir_to_exe_dir();
+
     let _singleton = match common::SingletonGuard::acquire(common::DATABASE_PATH) {
         Ok(guard) => guard,
         Err(msg) => {

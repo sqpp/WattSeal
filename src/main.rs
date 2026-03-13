@@ -137,11 +137,18 @@ fn run_linux_tray(ui_child: &Arc<Mutex<Option<Child>>>) -> bool {
 }
 
 fn main() {
+    if let Err(e) = common::set_current_dir_to_exe_dir() {
+        common::clog!("⚠ Failed to set working directory to executable directory: {}", e);
+    }
+
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let is_ui_mode = args.iter().any(|a| a == "--ui");
+    let is_background_mode = args.iter().any(|a| a == "--background");
+
     #[cfg(target_os = "windows")]
-    if !std::env::args().any(|a| a == "--ui") && !is_admin::is_admin() {
+    if !is_ui_mode && !is_admin::is_admin() {
         let exe = std::env::current_exe();
         if let Ok(exe) = exe {
-            let args: Vec<String> = std::env::args().skip(1).collect();
             let relaunched = runas::Command::new(&exe).args(&args).gui(true).status();
             match relaunched {
                 Ok(status) if status.success() => return,
@@ -150,7 +157,7 @@ fn main() {
         }
     }
 
-    if std::env::args().any(|a| a == "--ui") {
+    if is_ui_mode {
         let _ = ui::run();
         return;
     }
@@ -164,25 +171,45 @@ fn main() {
         }
     };
 
-    let (tx, rx) = mpsc::channel();
+    let (tx, rx) = mpsc::channel::<Result<(), String>>();
 
     thread::spawn(move || {
         let mut app = match CollectorApp::new() {
             Ok(app) => app,
-            Err(_) => return,
+            Err(e) => {
+                let msg = format!("Failed to create CollectorApp: {e}");
+                common::clog!("✗ {msg}");
+                let _ = tx.send(Err(msg));
+                return;
+            }
         };
-        if app.initialize().is_err() {
+        if let Err(e) = app.initialize() {
+            let msg = format!("Failed to initialize CollectorApp: {e}");
+            common::clog!("✗ {msg}");
+            let _ = tx.send(Err(msg));
             return;
         }
-        tx.send(()).unwrap_or_default();
+        tx.send(Ok(())).unwrap_or_default();
         app.run();
     });
 
     // Wait for collector to finish initializing
-    let _ = rx.recv();
+    match rx.recv() {
+        Ok(Ok(())) => {}
+        Ok(Err(msg)) => {
+            common::clog!("✗ {msg}");
+            return;
+        }
+        Err(e) => {
+            common::clog!("✗ Collector thread ended before signaling readiness: {}", e);
+            return;
+        }
+    }
 
     let ui_child: Arc<Mutex<Option<Child>>> = Arc::new(Mutex::new(None));
-    spawn_ui(&ui_child).ok();
+    if !is_background_mode {
+        spawn_ui(&ui_child).ok();
+    }
 
     // Windows/macOS: system tray + winit event loop
     #[cfg(not(target_os = "linux"))]
