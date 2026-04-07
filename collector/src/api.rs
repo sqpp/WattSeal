@@ -29,7 +29,7 @@ pub fn start_api_server(port: u16, api_key: Option<String>) {
             }
         };
 
-        for mut request in server.incoming_requests() {
+        for request in server.incoming_requests() {
             // Check API Key Auth if configured
             if let Some(ref key) = *api_key {
                 let mut authorized = false;
@@ -54,62 +54,85 @@ pub fn start_api_server(port: u16, api_key: Option<String>) {
             }
 
             let url = request.url().to_string();
-            let mut response_body = String::new();
+            let response_body;
             let mut status = StatusCode(200);
 
             // Match simple endpoints matching app chart behaviors
             if url.starts_with("/api/stats/") {
-                // (n_seconds, window_seconds)
-                let is_avg = url.contains("average");
-                let (n_seconds, window_seconds, is_single) = if url.contains("last_minute") {
-                    if is_avg { (60, 60, true) } else { (60, 1, false) }
-                } else if url.contains("last_hour") {
-                    if is_avg { (3600, 3600, true) } else { (3600, 60, false) }
-                } else if url.contains("last_day") {
-                    if is_avg { (3600 * 24, 3600 * 24, true) } else { (3600 * 24, 3600, false) }
-                } else if url.contains("last_week") {
-                    if is_avg { (3600 * 24 * 7, 3600 * 24 * 7, true) } else { (3600 * 24 * 7, 3600 * 24, false) }
-                } else if url.contains("last_month") {
-                    if is_avg { (2592000, 2592000, true) } else { (2592000, 86400, false) }
-                } else if url.contains("last_year") {
-                    if is_avg { (31536000, 31536000, true) } else { (31536000, 604800, false) }
-                } else if url.contains("current") {
-                    (1, 1, true)
-                } else {
-                    (0, 0, false)
-                };
+                if url.starts_with("/api/stats/summary") {
+                    let get_avg = |db: &mut Database, n_secs, win_secs| -> f64 {
+                        if let Ok(mut data) = db.select_last_n_seconds_average(n_secs, TotalData::table_name_static(), win_secs) {
+                            data.pop().and_then(|(_, s)| if let SensorData::Total(tot) = s { Some(tot.total_power_watts) } else { None }).unwrap_or(0.0)
+                        } else { 0.0 }
+                    };
 
-                if window_seconds > 0 {
-                    match db.select_last_n_seconds_average(
-                        n_seconds, 
-                        TotalData::table_name_static(), 
-                        window_seconds
-                    ) {
-                        Ok(data) => {
-                            let mut results = Vec::new();
-                            for (ts, sensor) in data {
-                                if let SensorData::Total(tot) = sensor {
-                                    results.push(serde_json::json!({
-                                        "time": ts.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs(),
-                                        "power_watts": tot.total_power_watts,
-                                        "period_type": tot.period_type,
-                                    }));
+                    let last_minute = get_avg(&mut db, 60, 60);
+                    let last_hour = get_avg(&mut db, 3600, 3600);
+                    let last_day = get_avg(&mut db, 3600 * 24, 3600 * 24);
+                    let last_week = get_avg(&mut db, 3600 * 24 * 7, 3600 * 24 * 7);
+                    let last_month = get_avg(&mut db, 2592000, 2592000);
+                    let last_year = get_avg(&mut db, 31536000, 31536000);
+
+                    response_body = serde_json::json!({
+                        "last_minute": last_minute,
+                        "last_hour": last_hour,
+                        "last_day": last_day,
+                        "last_week": last_week,
+                        "last_month": last_month,
+                        "last_year": last_year
+                    }).to_string();
+                } else {
+                    let is_avg = url.contains("average");
+                    let (n_seconds, window_seconds, is_single) = if url.contains("last_minute") {
+                        if is_avg { (60, 60, true) } else { (60, 1, false) }
+                    } else if url.contains("last_hour") {
+                        if is_avg { (3600, 3600, true) } else { (3600, 60, false) }
+                    } else if url.contains("last_day") {
+                        if is_avg { (3600 * 24, 3600 * 24, true) } else { (3600 * 24, 3600, false) }
+                    } else if url.contains("last_week") {
+                        if is_avg { (3600 * 24 * 7, 3600 * 24 * 7, true) } else { (3600 * 24 * 7, 3600 * 24, false) }
+                    } else if url.contains("last_month") {
+                        if is_avg { (2592000, 2592000, true) } else { (2592000, 86400, false) }
+                    } else if url.contains("last_year") {
+                        if is_avg { (31536000, 31536000, true) } else { (31536000, 604800, false) }
+                    } else if url.contains("current") {
+                        (1, 1, true)
+                    } else {
+                        (0, 0, false)
+                    };
+
+                    if window_seconds > 0 {
+                        match db.select_last_n_seconds_average(
+                            n_seconds, 
+                            TotalData::table_name_static(), 
+                            window_seconds
+                        ) {
+                            Ok(data) => {
+                                let mut results = Vec::new();
+                                for (ts, sensor) in data {
+                                    if let SensorData::Total(tot) = sensor {
+                                        results.push(serde_json::json!({
+                                            "time": ts.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs(),
+                                            "power_watts": tot.total_power_watts,
+                                            "period_type": tot.period_type,
+                                        }));
+                                    }
+                                }
+                                if is_single {
+                                    response_body = results.last().cloned().unwrap_or_else(|| serde_json::json!({})).to_string();
+                                } else {
+                                    response_body = serde_json::to_string(&results).unwrap_or_default();
                                 }
                             }
-                            if is_single {
-                                response_body = results.last().cloned().unwrap_or_else(|| serde_json::json!({})).to_string();
-                            } else {
-                                response_body = serde_json::to_string(&results).unwrap_or_default();
+                            Err(e) => {
+                                status = StatusCode(500);
+                                response_body = format!("{{\"error\": \"{}\"}}", e);
                             }
                         }
-                        Err(e) => {
-                            status = StatusCode(500);
-                            response_body = format!("{{\"error\": \"{}\"}}", e);
-                        }
+                    } else {
+                        status = StatusCode(404);
+                        response_body = "{\"error\": \"Not found\"}".to_string();
                     }
-                } else {
-                    status = StatusCode(404);
-                    response_body = "{\"error\": \"Not found\"}".to_string();
                 }
             } else {
                 status = StatusCode(404);
