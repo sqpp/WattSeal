@@ -60,18 +60,43 @@ pub fn start_api_server(port: u16, api_key: Option<String>) {
             // Match simple endpoints matching app chart behaviors
             if url.starts_with("/api/stats/") {
                 if url.starts_with("/api/stats/summary") {
-                    let get_avg = |db: &mut Database, n_secs, win_secs| -> f64 {
-                        if let Ok(mut data) = db.select_last_n_seconds_average(n_secs, TotalData::table_name_static(), win_secs) {
-                            data.pop().and_then(|(_, s)| if let SensorData::Total(tot) = s { Some(tot.total_power_watts) } else { None }).unwrap_or(0.0)
+                    // Prefer the last completed window, but if it is empty (common right after startup),
+                    // fall back to the current rolling window so summary is never misleadingly 0.
+                    let get_summary_avg = |db: &mut Database, period_secs: i64| -> f64 {
+                        if let Ok(data) = db.select_last_n_seconds_average(
+                            period_secs * 2,
+                            TotalData::table_name_static(),
+                            period_secs,
+                        ) {
+                            let values: Vec<f64> = data.into_iter().filter_map(|(_, s)| {
+                                if let SensorData::Total(tot) = s {
+                                    Some(tot.total_power_watts)
+                                } else {
+                                    None
+                                }
+                            }).collect();
+
+                            if values.is_empty() {
+                                return 0.0;
+                            }
+
+                            let current = *values.last().unwrap_or(&0.0);
+                            let previous = if values.len() >= 2 {
+                                values[values.len() - 2]
+                            } else {
+                                0.0
+                            };
+
+                            if previous > 0.0 { previous } else { current }
                         } else { 0.0 }
                     };
 
-                    let last_minute = get_avg(&mut db, 60, 60);
-                    let last_hour = get_avg(&mut db, 3600, 3600);
-                    let last_day = get_avg(&mut db, 3600 * 24, 3600 * 24);
-                    let last_week = get_avg(&mut db, 3600 * 24 * 7, 3600 * 24 * 7);
-                    let last_month = get_avg(&mut db, 2592000, 2592000);
-                    let last_year = get_avg(&mut db, 31536000, 31536000);
+                    let last_minute = get_summary_avg(&mut db, 60);
+                    let last_hour = get_summary_avg(&mut db, 3600);
+                    let last_day = get_summary_avg(&mut db, 3600 * 24);
+                    let last_week = get_summary_avg(&mut db, 3600 * 24 * 7);
+                    let last_month = get_summary_avg(&mut db, 2592000);
+                    let last_year = get_summary_avg(&mut db, 31536000);
 
                     response_body = serde_json::json!({
                         "last_minute": last_minute,
