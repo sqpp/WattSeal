@@ -615,7 +615,10 @@ impl Database {
 
         let hour_query = "SELECT
                 (t.timestamp / (?2 * 1000)) * (?2 * 1000) AS window_start,
-                AVG(COALESCE(d.total_power_watts, 0.0)) AS total_power_watts,
+                -- Hour rows store energy for that hour (Wh). Convert summed Wh
+                -- back to average power over the requested window:
+                -- avg_watts = (sum_wh * 3600) / window_seconds
+                SUM(COALESCE(d.total_power_watts, 0.0)) * 3600.0 / ?2 AS total_power_watts,
                 'hour' AS period_type
              FROM timestamp t
              JOIN total_data d ON t.id = d.timestamp_id

@@ -61,9 +61,9 @@ pub fn start_api_server(port: u16, api_key: Option<String>) {
             if url.starts_with("/api/stats/") {
                 if url.starts_with("/api/stats/summary") {
                     // Summary policy:
-                    // - short ranges (minute/hour): prefer completed bucket for stability
-                    // - long ranges (day/week/month/year): include current ongoing data
-                    let get_summary_avg = |db: &mut Database, period_secs: i64, include_current: bool| -> f64 {
+                    // - Return window energy in Wh for all ranges.
+                    // - Include current ongoing window (rolling "up to now").
+                    let get_summary_energy_wh = |db: &mut Database, period_secs: i64| -> f64 {
                         if let Ok(data) = db.select_last_n_seconds_average(
                             period_secs * 2,
                             TotalData::table_name_static(),
@@ -82,28 +82,16 @@ pub fn start_api_server(port: u16, api_key: Option<String>) {
                             }
 
                             let current = *values.last().unwrap_or(&0.0);
-                            let previous = if values.len() >= 2 {
-                                values[values.len() - 2]
-                            } else {
-                                0.0
-                            };
-
-                            if include_current {
-                                current
-                            } else if previous > 0.0 {
-                                previous
-                            } else {
-                                current
-                            }
+                            (current * period_secs as f64 / 3600.0).max(0.0)
                         } else { 0.0 }
                     };
 
-                    let last_minute = get_summary_avg(&mut db, 60, false);
-                    let last_hour = get_summary_avg(&mut db, 3600, false);
-                    let last_day = get_summary_avg(&mut db, 3600 * 24, true);
-                    let last_week = get_summary_avg(&mut db, 3600 * 24 * 7, true);
-                    let last_month = get_summary_avg(&mut db, 2592000, true);
-                    let last_year = get_summary_avg(&mut db, 31536000, true);
+                    let last_minute = get_summary_energy_wh(&mut db, 60);
+                    let last_hour = get_summary_energy_wh(&mut db, 3600);
+                    let last_day = get_summary_energy_wh(&mut db, 3600 * 24);
+                    let last_week = get_summary_energy_wh(&mut db, 3600 * 24 * 7);
+                    let last_month = get_summary_energy_wh(&mut db, 2592000);
+                    let last_year = get_summary_energy_wh(&mut db, 31536000);
 
                     let all_time_wh = db
                         .get_all_time_data()
