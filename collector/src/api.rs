@@ -60,20 +60,23 @@ pub fn start_api_server(port: u16, api_key: Option<String>) {
             // Match simple endpoints matching app chart behaviors
             if url.starts_with("/api/stats/") {
                 // (n_seconds, window_seconds)
-                let (n_seconds, window_seconds) = if url.contains("last_minute") {
-                    (60, 1) // 60 seconds total, 1 second buckets
+                let is_avg = url.contains("average");
+                let (n_seconds, window_seconds, is_single) = if url.contains("last_minute") {
+                    if is_avg { (60, 60, true) } else { (60, 1, false) }
                 } else if url.contains("last_hour") {
-                    (3600, 60) // 1 hour total, 1 minute buckets
+                    if is_avg { (3600, 3600, true) } else { (3600, 60, false) }
                 } else if url.contains("last_day") {
-                    (3600 * 24, 3600) // 24 hours total, 1 hour buckets
+                    if is_avg { (3600 * 24, 3600 * 24, true) } else { (3600 * 24, 3600, false) }
                 } else if url.contains("last_week") {
-                    (3600 * 24 * 7, 3600 * 24) // 7 days total, 1 day buckets
+                    if is_avg { (3600 * 24 * 7, 3600 * 24 * 7, true) } else { (3600 * 24 * 7, 3600 * 24, false) }
                 } else if url.contains("last_month") {
-                    (2592000, 86400) // 30 days total, 1 day buckets
+                    if is_avg { (2592000, 2592000, true) } else { (2592000, 86400, false) }
                 } else if url.contains("last_year") {
-                    (31536000, 604800) // 365 days total, 1 week buckets
+                    if is_avg { (31536000, 31536000, true) } else { (31536000, 604800, false) }
+                } else if url.contains("current") {
+                    (1, 1, true)
                 } else {
-                    (0, 0)
+                    (0, 0, false)
                 };
 
                 if window_seconds > 0 {
@@ -93,7 +96,11 @@ pub fn start_api_server(port: u16, api_key: Option<String>) {
                                     }));
                                 }
                             }
-                            response_body = serde_json::to_string(&results).unwrap_or_default();
+                            if is_single {
+                                response_body = results.last().cloned().unwrap_or_else(|| serde_json::json!({})).to_string();
+                            } else {
+                                response_body = serde_json::to_string(&results).unwrap_or_default();
+                            }
                         }
                         Err(e) => {
                             status = StatusCode(500);
