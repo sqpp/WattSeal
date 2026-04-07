@@ -98,13 +98,35 @@ pub fn start_api_server(port: u16, api_key: Option<String>) {
                     let last_month = get_summary_avg(&mut db, 2592000);
                     let last_year = get_summary_avg(&mut db, 31536000);
 
+                    let all_time_wh = db
+                        .get_all_time_data()
+                        .ok()
+                        .and_then(|all| all.components.get(TotalData::table_name_static()).copied())
+                        .unwrap_or(0.0)
+                        .max(0.0);
+
+                    let settings = db.load_ui_settings().ok().flatten();
+                    let carbon_g_per_kwh = settings
+                        .as_ref()
+                        .map(|s| parse_carbon_intensity_g_per_kwh(&s.carbon_intensity))
+                        .unwrap_or(399.0);
+                    let usd_per_kwh = settings
+                        .as_ref()
+                        .map(|s| parse_electricity_cost_usd_per_kwh(&s.kwh_cost))
+                        .unwrap_or(0.17);
+                    let emissions_g_co2 = (all_time_wh / 1000.0) * carbon_g_per_kwh;
+                    let estimated_bill_usd = (all_time_wh / 1000.0) * usd_per_kwh;
+
                     response_body = serde_json::json!({
                         "last_minute": last_minute,
                         "last_hour": last_hour,
                         "last_day": last_day,
                         "last_week": last_week,
                         "last_month": last_month,
-                        "last_year": last_year
+                        "last_year": last_year,
+                        "all_time_wh": all_time_wh,
+                        "emissions_g_co2": emissions_g_co2,
+                        "estimated_bill_usd": estimated_bill_usd
                     }).to_string();
                 } else {
                     let is_avg = url.contains("average");
@@ -169,4 +191,42 @@ pub fn start_api_server(port: u16, api_key: Option<String>) {
             let _ = request.respond(response);
         }
     });
+}
+
+fn parse_carbon_intensity_g_per_kwh(raw: &str) -> f64 {
+    let label = raw.trim();
+    if let Ok(v) = label.parse::<f64>() {
+        return v.max(0.0);
+    }
+    match label {
+        "France" => 42.0,
+        "Germany" => 332.0,
+        "UK" => 217.0,
+        "USA (average)" => 384.0,
+        "China" => 555.0,
+        "India" => 707.0,
+        "Sweden" => 35.0,
+        "Poland" => 592.0,
+        "World average" => 399.0,
+        _ => 399.0,
+    }
+}
+
+fn parse_electricity_cost_usd_per_kwh(raw: &str) -> f64 {
+    let label = raw.trim();
+    if let Ok(v) = label.parse::<f64>() {
+        return v.max(0.0);
+    }
+    match label {
+        "France" => 0.28,
+        "Germany" => 0.4,
+        "Spain" => 0.25,
+        "Italy" => 0.42,
+        "Netherlands" => 0.28,
+        "Switzerland" => 0.37,
+        "UK" => 0.4,
+        "USA (average)" => 0.18,
+        "World average" => 0.17,
+        _ => 0.17,
+    }
 }
