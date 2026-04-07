@@ -138,6 +138,32 @@ With admin privileges, WattSeal provides the most comprehensive power monitoring
 
 ---
 
+## Command-Line Configuration & Headless Usage
+
+WattSeal now supports external configuration via a `config.json` file or CLI flags, allowing for fully automated, headless monitoring.
+
+**CLI Arguments**:
+- `--power-log <path.csv>`: Appends component power breakdowns every second to a CSV file.
+- `--carbon-intensity <string>`: Overrides the target carbon intensity (e.g. `100gCO2/kWh`).
+- `--electricity-cost <string>`: Overrides the target electricity cost per kWh.
+- `--api-port <port>`: Spawns the HTTP statistical API locally.
+- `--api-key <keyword>`: Secures the API with an authentication token (sent via `x-api-key` header or parameter).
+- `--config <path.json>`: Reads all parameters from a JSON object.
+
+*Note: CLI flags take precedence over the config.json. Resolving any of these values automatically updates the local database preferences used by the UI.*
+
+### HTTP Statistical API
+
+When the API port is bound (e.g., `--api-port 8080`), you can query windowed power averages of the whole system directly via an HTTP client:
+
+```bash
+curl -H "x-api-key: my_secret_token" http://localhost:8080/api/stats/last_minute
+```
+
+It supports `/api/stats/last_minute`, `/api/stats/last_hour`, `/api/stats/last_week`, `/api/stats/last_month`, and `/api/stats/last_year` returning a JSON array with `power_watts`, `time`, and `period_type`.
+
+---
+
 <br>
 
 ## Troubleshooting

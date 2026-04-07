@@ -1,5 +1,7 @@
 pub mod database;
 pub mod sensors;
+pub mod config;
+pub mod api;
 
 use std::{
     cell::RefCell,
@@ -27,6 +29,7 @@ pub struct CollectorApp {
     #[cfg(debug_assertions)]
     iteration: u64,
     power_log_path: Option<String>,
+    pending_config: Option<config::CollectorConfig>,
 }
 
 impl CollectorApp {
@@ -43,14 +46,17 @@ impl CollectorApp {
             #[cfg(debug_assertions)]
             iteration: 0,
             power_log_path: None,
+            pending_config: None,
         })
     }
 
-    /// Sets the path for the power log file.
-    pub fn with_power_log(mut self, path: String) -> Self {
-        self.power_log_path = Some(path);
+    /// Set configuration loaded from args/file
+    pub fn with_config(mut self, config: config::CollectorConfig) -> Self {
+        self.power_log_path = config.power_log.clone();
+        self.pending_config = Some(config);
         self
     }
+
 
     fn purge_and_average(&mut self) {
         thread::spawn(|| {
@@ -114,6 +120,33 @@ impl CollectorApp {
         match self.database.insert_hardware_info(&info) {
             Ok(_) => clog!("✓ Hardware info saved"),
             Err(e) => clog!("✗ Failed to save hardware info: {e}"),
+        }
+
+        // Apply config
+        if let Some(config) = self.pending_config.take() {
+            let mut ui_settings = self.database.load_ui_settings().unwrap_or_default().unwrap_or(common::database::UiSettings {
+                language: "EN".to_string(),
+                carbon_intensity: "World average".to_string(),
+                kwh_cost: "World average".to_string(),
+                theme: "Hunting".to_string(),
+            });
+            let mut changed = false;
+            if let Some(ci) = config.carbon_intensity {
+                ui_settings.carbon_intensity = ci;
+                changed = true;
+            }
+            if let Some(ec) = config.electricity_cost {
+                ui_settings.kwh_cost = ec;
+                changed = true;
+            }
+            if changed {
+                let _ = self.database.save_ui_settings(&ui_settings);
+                clog!("✓ CLI/Config UI settings applied");
+            }
+            
+            if let Some(port) = config.api_port {
+                api::start_api_server(port, config.api_key);
+            }
         }
 
         clog!("Initialization complete");
