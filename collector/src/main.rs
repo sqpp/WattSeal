@@ -11,8 +11,20 @@ fn main() {
         }
     };
 
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let power_log_path = args
+        .iter()
+        .position(|a| a == "--power-log")
+        .and_then(|i| args.get(i + 1))
+        .cloned();
+
     let mut app = match CollectorApp::new() {
-        Ok(app) => app,
+        Ok(mut app) => {
+            if let Some(path) = power_log_path {
+                app = app.with_power_log(path);
+            }
+            app
+        }
         Err(e) => {
             eprintln!("Failed to create CollectorApp: {}", e);
             return;

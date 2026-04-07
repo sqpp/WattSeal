@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::DatabaseEntry;
 
 /// Timestamped collection of sensor readings.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Event {
     time: SystemTime,
     data: Vec<SensorData>,
@@ -31,16 +31,64 @@ impl Event {
     pub fn push_data(&mut self, data: SensorData) {
         self.data.push(data);
     }
+
+    /// Header for CSV export.
+    pub fn to_csv_header() -> &'static str {
+        "Timestamp,CPU (W),CPU Usage (%),GPU (W),GPU Usage (%),RAM (W),RAM Usage (%),Disk (W),Network (W),Total (W)"
+    }
+
+    /// Formats the event as a CSV row.
+    pub fn to_csv_row(&self) -> String {
+        let ts = chrono::DateTime::<chrono::Local>::from(self.time)
+            .format("%Y-%m-%d %H:%M:%S")
+            .to_string();
+
+        let mut cpu_w = 0.0;
+        let mut cpu_u = 0.0;
+        let mut gpu_w = 0.0;
+        let mut gpu_u = 0.0;
+        let mut ram_w = 0.0;
+        let mut ram_u = 0.0;
+        let mut disk_w = 0.0;
+        let mut net_w = 0.0;
+        let mut total_w = 0.0;
+
+        for data in &self.data {
+            match data {
+                SensorData::CPU(d) => {
+                    cpu_w = d.total_power_watts.unwrap_or(0.0);
+                    cpu_u = d.usage_percent.unwrap_or(0.0);
+                }
+                SensorData::GPU(d) => {
+                    gpu_w = d.total_power_watts.unwrap_or(0.0);
+                    gpu_u = d.usage_percent.unwrap_or(0.0);
+                }
+                SensorData::Ram(d) => {
+                    ram_w = d.total_power_watts.unwrap_or(0.0);
+                    ram_u = d.usage_percent.unwrap_or(0.0);
+                }
+                SensorData::Disk(d) => disk_w = d.total_power_watts.unwrap_or(0.0),
+                SensorData::Network(d) => net_w = d.total_power_watts.unwrap_or(0.0),
+                SensorData::Total(d) => total_w = d.total_power_watts,
+                SensorData::Process(_) => {}
+            }
+        }
+
+        format!(
+            "{}, {:.3}, {:.2}, {:.3}, {:.2}, {:.3}, {:.2}, {:.3}, {:.3}, {:.3}",
+            ts, cpu_w, cpu_u, gpu_w, gpu_u, ram_w, ram_u, disk_w, net_w, total_w
+        )
+    }
 }
 
 /// Cumulative per-component energy totals.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AllTimeData {
     pub components: HashMap<String, f64>,
 }
 
 /// CPU power and usage readings.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CPUData {
     pub total_power_watts: Option<f64>,
     pub pp0_power_watts: Option<f64>,
@@ -50,7 +98,7 @@ pub struct CPUData {
 }
 
 /// GPU power and usage readings.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GPUData {
     pub total_power_watts: Option<f64>,
     pub usage_percent: Option<f64>,
@@ -58,14 +106,14 @@ pub struct GPUData {
 }
 
 /// RAM power and usage readings.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RamData {
     pub total_power_watts: Option<f64>,
     pub usage_percent: Option<f64>,
 }
 
 /// Disk power and I/O throughput readings.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiskData {
     pub total_power_watts: Option<f64>,
     pub read_usage_mb_s: f64,
@@ -73,7 +121,7 @@ pub struct DiskData {
 }
 
 /// Network power and throughput readings.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkData {
     pub total_power_watts: Option<f64>,
     pub download_speed_mb_s: f64,
@@ -81,7 +129,7 @@ pub struct NetworkData {
 }
 
 /// Raw RGBA icon pixel data.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IconData {
     pub width: u32,
     pub height: u32,
@@ -89,7 +137,7 @@ pub struct IconData {
 }
 
 /// Per-application resource usage snapshot.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcessData {
     pub app_name: String,
     pub process_exe_path: Option<String>,
@@ -104,7 +152,7 @@ pub struct ProcessData {
 }
 
 /// Tagged union of all sensor reading types.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SensorData {
     CPU(CPUData),
     GPU(GPUData),
@@ -116,7 +164,7 @@ pub enum SensorData {
 }
 
 /// Aggregated total power across all components.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TotalData {
     pub total_power_watts: f64,
     pub period_type: String,

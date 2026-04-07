@@ -26,6 +26,7 @@ pub struct CollectorApp {
     last_purge: Instant,
     #[cfg(debug_assertions)]
     iteration: u64,
+    power_log_path: Option<String>,
 }
 
 impl CollectorApp {
@@ -41,7 +42,14 @@ impl CollectorApp {
             last_purge: Instant::now(),
             #[cfg(debug_assertions)]
             iteration: 0,
+            power_log_path: None,
         })
+    }
+
+    /// Sets the path for the power log file.
+    pub fn with_power_log(mut self, path: String) -> Self {
+        self.power_log_path = Some(path);
+        self
     }
 
     fn purge_and_average(&mut self) {
@@ -152,6 +160,18 @@ impl CollectorApp {
             let _ = self
                 .database
                 .insert_event_and_update_energy(&event, since_last_update_secs);
+
+            if let Some(ref path) = self.power_log_path {
+                use std::io::Write;
+                let file_exists = std::path::Path::new(path).exists();
+                let is_empty = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0) == 0;
+                if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
+                    if !file_exists || is_empty {
+                        let _ = writeln!(f, "{}", common::types::Event::to_csv_header());
+                    }
+                    let _ = writeln!(f, "{}", event.to_csv_row());
+                }
+            }
 
             #[cfg(debug_assertions)]
             for sensor_data in event.data() {

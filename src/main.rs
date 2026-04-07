@@ -144,6 +144,11 @@ fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let is_ui_mode = args.iter().any(|a| a == "--ui");
     let is_background_mode = args.iter().any(|a| a == "--background");
+    let power_log_path = args
+        .iter()
+        .position(|a| a == "--power-log")
+        .and_then(|i| args.get(i + 1))
+        .cloned();
 
     #[cfg(target_os = "windows")]
     if !is_ui_mode && !is_admin::is_admin() {
@@ -173,9 +178,15 @@ fn main() {
 
     let (tx, rx) = mpsc::channel::<Result<(), String>>();
 
+    let log_path = power_log_path.clone(); // Clone for move
     thread::spawn(move || {
         let mut app = match CollectorApp::new() {
-            Ok(app) => app,
+            Ok(mut app) => {
+                if let Some(path) = log_path {
+                    app = app.with_power_log(path);
+                }
+                app
+            }
             Err(e) => {
                 let msg = format!("Failed to create CollectorApp: {e}");
                 common::clog!("✗ {msg}");
